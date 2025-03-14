@@ -69,18 +69,37 @@ app.MapPost("/token", async (HttpContext context) =>
 // Add a new endpoint for GitHub Copilot Extension
 app.MapPost("/copilot", async (HttpContext context) =>
 {
+    // Verify validity of call
+    // https://docs.github.com/en/copilot/building-copilot-extensions/building-a-copilot-agent-for-your-copilot-extension/configuring-your-copilot-agent-to-communicate-with-github#verifying-that-payloads-are-coming-from-github
+    // https://github.com/github-technology-partners/signature-verification
+
     // Log the request headers and body
-    app.Logger.LogInformation("Received headers: {Headers}", context.Request.Headers);
+    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
     // Log the received request body
     using var reader = new StreamReader(context.Request.Body);
     var requestBody = await reader.ReadToEndAsync();
-    app.Logger.LogInformation("Received request: {RequestBody}", requestBody);
+    app.Logger.LogDebug("Received request: {RequestBody}", requestBody);
 
-    // Return a response with the received data
-    return Results.Json(new
+    var (isMapped, gitHubUserId) = await AccountMapping.CheckAccountMapping(context.Request.Headers, app.Logger);
+    if (isMapped)
     {
-        Message = "GitHub Copilot Extension endpoint is active.",
-    }, statusCode: 200);
+        // Proceed
+        app.Logger.LogDebug("Account is mapped to Azure DevOps.");
+        return Results.Json(new
+        {
+            Message = "Azure DevOps account mapping is not implemented.",
+        }, statusCode: 200);
+    } 
+    else 
+    {
+        // Start Mapping Procedure
+        return Results.Json(new
+        {
+            Message = "GitHub Copilot Extension endpoint is active.",
+            UserId = gitHubUserId
+        }, statusCode: 200);
+    }
+
 })
 .WithName("PostCopilotMessage");
 
