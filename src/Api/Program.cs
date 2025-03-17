@@ -58,26 +58,41 @@ app.MapPost("/token", async (HttpContext context) =>
     //     expires_in = 60, // for testing purposes, set to 60 seconds
     // }, statusCode: 200);
 
+    // on http code 400 doesn't proceed to chat messages
+    // on http code 200 proceeding to chat messages with no token set (empty string)
     return Results.Json(new
     {
         error
         = "invalid_request"
-    }, statusCode: 200);
+    }, statusCode: 400);
 })
 .WithName("PostTokeExchange");
 
 // Add a new endpoint for GitHub Copilot Extension
 app.MapPost("/copilot", async (HttpContext context) =>
 {
+    // Read the request body/payload
+    using var reader = new StreamReader(context.Request.Body);
+    var requestBody = await reader.ReadToEndAsync();
     // Verify validity of call
     // https://docs.github.com/en/copilot/building-copilot-extensions/building-a-copilot-agent-for-your-copilot-extension/configuring-your-copilot-agent-to-communicate-with-github#verifying-that-payloads-are-coming-from-github
     // https://github.com/github-technology-partners/signature-verification
+    if (!await GitHubService.IsValidGitHubRequest(
+        requestBody,
+        context.Request.Headers["X-GitHub-Public-Key-Identifier"]!,
+        context.Request.Headers["X-GitHub-Public-Key-Signature"]!,
+        app.Logger
+    )) {
+        app.Logger.LogError("Invalid GitHub request.");
+        return Results.Json(new
+        {
+            error = "unauthorized_request"
+        }, statusCode: 401);
+    }
 
     // Log the request headers and body
     app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
     // Log the received request body
-    using var reader = new StreamReader(context.Request.Body);
-    var requestBody = await reader.ReadToEndAsync();
     app.Logger.LogDebug("Received request: {RequestBody}", requestBody);
 
     var (isMapped, gitHubUserId) = await AccountMapping.CheckAccountMapping(context.Request.Headers, app.Logger);
