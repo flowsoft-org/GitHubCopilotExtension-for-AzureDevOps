@@ -34,40 +34,6 @@ app.UseHttpsRedirection();
 // app.UseAuthentication();
 // app.UseAuthorization();
 
-
-// Add a new endpoint for GitHub Copilot Extension
-app.MapPost("/token", async (HttpContext context) =>
-{
-    // Log the request headers and body
-    app.Logger.LogInformation("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request query string
-    app.Logger.LogInformation("Received Query: {QueryString}", context.Request.QueryString);
-    // Log the received request body
-    using var reader = new StreamReader(context.Request.Body);
-    var requestBody = await reader.ReadToEndAsync();
-    app.Logger.LogInformation("Received request: {RequestBody}", requestBody);
-
-
-    // Return a response with the received data
-    // return Results.Json(new
-    // {
-    //     access_token
-    //     = "your_access_token",
-    //     token_type = "Bearer",
-    //     issued_token_type = "urn:ietf:params:oauth:token-type:access_token",
-    //     expires_in = 60, // for testing purposes, set to 60 seconds
-    // }, statusCode: 200);
-
-    // on http code 400 doesn't proceed to chat messages
-    // on http code 200 proceeding to chat messages with no token set (empty string)
-    return Results.Json(new
-    {
-        error
-        = "invalid_request"
-    }, statusCode: 400);
-})
-.WithName("PostTokeExchange");
-
 // Add a new endpoint for GitHub Copilot Extension
 app.MapPost("/copilot", async (HttpContext context) =>
 {

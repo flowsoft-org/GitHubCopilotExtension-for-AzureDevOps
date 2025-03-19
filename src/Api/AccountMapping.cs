@@ -14,12 +14,8 @@ public class AccountMapping
             
             var gitHubService = new GitHubService(githubToken!, logger);
             var userId = await gitHubService.GetUserIdAsync();
-            if (userId == null)
-            {
-                throw new Exception("Failed to retrieve user ID from GitHub.");
-            }
 
-            return (false, userId.Value);
+            return (false, userId);
         }
         else
         {

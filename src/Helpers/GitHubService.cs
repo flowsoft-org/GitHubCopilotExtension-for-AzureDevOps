@@ -5,13 +5,13 @@ using Microsoft.Kiota.Serialization;
 using Org.BouncyCastle.Security;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 public class GitHubService
 {
-    private readonly GitHubClient _client;
+    private readonly string _githubToken;
     private readonly ILogger _logger;
     const string GITHUB_COPILOT_KEYS_ENDPOINT = "https://api.github.com/meta/public_keys/copilot_api";
-
 
     public GitHubService(string githubToken, ILogger logger)
     {
@@ -19,30 +19,38 @@ public class GitHubService
         {
             throw new ArgumentException("GITHUB_TOKEN cannot be null or empty.", nameof(githubToken));
         }
-        var tokenProvider = new TokenProvider(githubToken);
-        var adapter = RequestAdapter.Create(new TokenAuthProvider(tokenProvider));
-        _client = new GitHubClient(adapter);
+        _githubToken = githubToken;
         _logger = logger;
+    }
+
+    private GitHubClient CreateGitHubClient()
+    {
+        var tokenProvider = new TokenProvider(_githubToken);
+        var adapter = RequestAdapter.Create(new TokenAuthProvider(tokenProvider));
+        return new GitHubClient(adapter);
     }
 
     private async Task<GitHub.User.UserRequestBuilder.UserGetResponse?> GetCurrentUserAsync()
     {
-        var userGetResponse = await _client.User.GetAsync();
+        var client = CreateGitHubClient();
+        var userGetResponse = await client.User.GetAsync();
         var currentUserJson = await userGetResponse!.PublicUser!.SerializeAsJsonStringAsync();
         _logger.LogDebug("Current user: {CurrentUser}", currentUserJson);
         return userGetResponse;
     }
 
-    public async Task<long?> GetUserIdAsync()
+    public async Task<long> GetUserIdAsync()
     {
-        var currentUser = await this.GetCurrentUserAsync();
-        if (currentUser!.PublicUser == null)
+        var client = CreateGitHubClient();
+        var userGetResponse = await client.User.GetAsync();
+        if (userGetResponse?.PublicUser == null)
         {
-            return currentUser!.PrivateUser!.Id;
+            return userGetResponse?.PrivateUser?.Id 
+                ?? throw new InvalidOperationException("Failed to retrieve user ID.");
         } else {
-            return currentUser!.PublicUser!.Id;
+            return userGetResponse?.PublicUser?.Id 
+                ?? throw new InvalidOperationException("Failed to retrieve user ID.");
         }
-        
     }
 
     public static async Task<bool> IsValidGitHubRequest(string payload, string keyID, string signature, ILogger logger)
