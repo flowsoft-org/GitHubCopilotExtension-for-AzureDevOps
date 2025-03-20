@@ -116,4 +116,12 @@ public static class Extensions
 
         return app;
     }
+
+    public static WebApplication UseDefaultMiddleware(this WebApplication app)
+    {
+        // Add the request logging middleware
+        app.UseMiddleware<RequestLoggingMiddleware>();
+
+        return app;
+    }
 }

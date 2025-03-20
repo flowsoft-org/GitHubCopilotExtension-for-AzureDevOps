@@ -3,22 +3,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.AddServiceDefaults();
 
 // Add logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// // Add OIDC authentication
-// builder.Services.AddAuthentication(options =>
-// {
-//     options.DefaultAuthenticateScheme = "Bearer";
-//     options.DefaultChallengeScheme = "Bearer";
-// })
-// .AddJwtBearer("Bearer", options =>
-// {
-//     options.Authority = "https://your-oidc-provider.com"; // Replace with your OIDC provider
-//     options.Audience = "your-audience"; // Replace with your API audience
-// });
 
 var app = builder.Build();
 
@@ -29,10 +19,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Enable authentication and authorization
-// app.UseAuthentication();
-// app.UseAuthorization();
+app.UseDefaultMiddleware();
 
 // Add a new endpoint for GitHub Copilot Extension
 app.MapPost("/copilot", async (HttpContext context) =>
@@ -56,11 +43,16 @@ app.MapPost("/copilot", async (HttpContext context) =>
         }, statusCode: 401);
     }
 
-    // Log the request headers and body
-    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request body
-    app.Logger.LogDebug("Received request: {RequestBody}", requestBody);
+    if (context.Request.Headers["x-azure-devops-token"].FirstOrDefault() == string.Empty){
+        app.Logger.LogError("Azure DevOps token is missing. User needs to reauthorize.");
+        return Results.Json(new
+        {
+            error = "missing_azure_devops_token"
+        }, statusCode: 200);
+    }
 
+
+    // Check if the account is already mapped to Azure DevOps
     var (isMapped, gitHubUserId) = await AccountMapping.CheckAccountMapping(context.Request.Headers, app.Logger);
     if (isMapped)
     {

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Helpers\Helpers.csproj" />
+    <ProjectReference Include="..\ServiceDefaults\ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

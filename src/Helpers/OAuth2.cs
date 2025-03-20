@@ -11,12 +11,13 @@ namespace Helpers;
 public class OAuth2
 {
     public static Dictionary<string, JsonWebKeySet> jwks_cache = new Dictionary<string, JsonWebKeySet>();
-    public static string GetAuthorizationUrl(string clientId, string redirectUri, string scope)
+
+    public static string GetGitHubAuthorizationUrl(string clientId, string redirectUri, string scope)
     {
         return $"https://example.com/oauth/authorize?client_id={clientId}&redirect_uri={redirectUri}&scope={scope}&response_type=code";
     }
 
-    public static string GetTokenUrl(string clientId, string clientSecret, string redirectUri, string code)
+    public static string GetGitHubTokenUrl(string clientId, string clientSecret, string redirectUri, string code)
     {
         return $"https://example.com/oauth/token?client_id={clientId}&client_secret={clientSecret}&redirect_uri={redirectUri}&code={code}&grant_type=authorization_code";
     }

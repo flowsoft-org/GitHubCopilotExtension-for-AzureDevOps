@@ -1,19 +1,21 @@
-using System.Text.Json;
-using System.IO;
-using GitHub;
 using Microsoft.Extensions.Caching.Memory;
 using Helpers;
-using Microsoft.AspNetCore.Authentication.OAuth;
 const string STATE_COOKIE_GITHUB = "oauth_state_github";
 const string STATE_COOKIE_ENTRA = "oauth_state_entra";
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add service defaults
+builder.AddServiceDefaults();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 var app = builder.Build();
+
+// Use default middleware
+app.UseDefaultMiddleware();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -49,11 +51,6 @@ app.UseHttpsRedirection();
 // Endpoint for GitHub Copilot Extension preauthentication
 app.MapGet("/preauth", (HttpContext context) =>
 {
-    // Log the request headers and body
-    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request query string
-    app.Logger.LogDebug("Received Query: {QueryString}", context.Request.QueryString);
-    
     // Generate state value and authUrl
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
     // limited options available for GitHub
@@ -85,17 +82,6 @@ app.MapGet("/preauth", (HttpContext context) =>
 // Retrieve the access token from GitHub
 app.MapGet("/postauth-github", async (HttpContext context) =>
 {
-    // Log the request headers and body
-    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request query string
-    app.Logger.LogDebug("Received Query: {QueryString}", context.Request.QueryString);
-
-    // Log the received request body - no body for get
-    // using var reader = new StreamReader(context.Request.Body);
-    // var idToken = await reader.ReadToEndAsync();
-    // app.Logger.LogDebug
-    // ("Received request: {idToken}", idToken);
-
     var state = context.Request.Query["state"].ToString();
     var code = context.Request.Query["code"].ToString();
     var cookieState = context.Request.Cookies[STATE_COOKIE_GITHUB];
@@ -145,7 +131,7 @@ app.MapGet("/postauth-github", async (HttpContext context) =>
         var gitHubUserId = await new GitHubService(accessToken, app.Logger).GetUserIdAsync();
         app.Logger.LogDebug("GitHub User ID: {GitHubUserId}", gitHubUserId);
 
-        var authUrl = GenerateEntraIdAuthUrl(context, gitHubUserId);
+        var authUrl = GenerateEntraIdAuthUrlAndSetStateCookie(context, gitHubUserId);
         app.Logger.LogDebug("Redirecting to authorization URL: {AuthUrl}", authUrl);
 
         // Return URL rewrite
@@ -163,7 +149,7 @@ app.MapGet("/postauth-github", async (HttpContext context) =>
 .WithName("PostAuthGitHub");
 
 
-string GenerateEntraIdAuthUrl(HttpContext context, long gitHubUserId)
+string GenerateEntraIdAuthUrlAndSetStateCookie(HttpContext context, long gitHubUserId)
 {
     // Generate the authorization URL for Azure DevOps/Entra ID Application
     var state = Guid.NewGuid().ToString();
@@ -196,16 +182,6 @@ string GenerateEntraIdAuthUrl(HttpContext context, long gitHubUserId)
 // Add a new endpoint for GitHub Copilot Extension
 app.MapGet("/postauth-entra", async (HttpContext context, IMemoryCache memoryCache) =>
 {
-    // Log the request headers and body
-    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request query string
-    app.Logger.LogDebug("Received Query: {QueryString}", context.Request.QueryString);
-    // Log the received request body
-    using var reader = new StreamReader(context.Request.Body);
-    var requestBody = await reader.ReadToEndAsync();
-    app.Logger.LogDebug
-    ("Received request: {RequestBody}", requestBody);
-
     var state = context.Request.Query["state"].ToString().Split('_')[0];
     var gitHubUserId = context.Request.Query["state"].ToString().Split('_')[1];
     var cookieState = context.Request.Cookies[STATE_COOKIE_ENTRA];
@@ -272,15 +248,9 @@ app.MapGet("/postauth-entra", async (HttpContext context, IMemoryCache memoryCac
 // Add a new endpoint for GitHub Copilot Extension
 app.MapPost("/token", async (HttpContext context, IMemoryCache memoryCache) =>
 {
-    // Log the request headers and body
-    app.Logger.LogDebug("Received headers: {Headers}", context.Request.Headers);
-    // Log the received request query string
-    app.Logger.LogDebug("Received Query: {QueryString}", context.Request.QueryString);
     // Log the received request body
     using var reader = new StreamReader(context.Request.Body);
     var requestBody = await reader.ReadToEndAsync();
-    app.Logger.LogDebug
-    ("Received request: {RequestBody}", requestBody);
 
     // Extract the id_token from the request body
     var formParams = System.Web.HttpUtility.ParseQueryString(requestBody);
@@ -304,19 +274,22 @@ app.MapPost("/token", async (HttpContext context, IMemoryCache memoryCache) =>
 
     app.Logger.LogDebug("Received GitHub User ID: {GitHubUserId}", gitHubUserId);
     // Retrieve the access token from the token store
-    if (!memoryCache.TryGetValue(gitHubUserId, out OAuth2TokenResponse token))
+    if (!memoryCache.TryGetValue(gitHubUserId, out OAuth2TokenResponse? token))
     {
         app.Logger.LogError("Access token not found for GitHub User ID: {GitHubUserId}", gitHubUserId);
+
+        // Return Successful HTTP Status, otherwise user will be stuck and can't initiate re-authentication by themselves
+        // chat message endpoint will check for valid entra token and if non provided asks user to go through authentication process again.
         return Results.Json(new
         {
             error = "invalid_request"
-        }, statusCode: 400);
+        }, statusCode: 200);
     }
 
     //Return a response with the received data
     return Results.Json(new
     {
-        access_token = token.AccessToken,
+        access_token = token?.AccessToken,
         token_type = "Bearer",
         issued_token_type = "urn:ietf:params:oauth:token-type:access_token",
         expires_in = 60, // for testing purposes, set to 60 seconds
