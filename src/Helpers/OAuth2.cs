@@ -97,7 +97,7 @@ public class OAuth2
         using var httpClient = new HttpClient();
         var openidconfigUri = $"{issuer}/.well-known/openid-configuration";
         var response = await httpClient.GetFromJsonAsync<OpenIdConnectConfiguration>(openidconfigUri);
-        return response.JwksUri ?? throw new InvalidOperationException("JWKS URI not found.");;
+        return response?.JwksUri ?? throw new InvalidOperationException("JWKS URI not found.");;
     }
 
     public static async Task<JsonWebKeySet> GetSigningKeysAsync(string jwksUri)
