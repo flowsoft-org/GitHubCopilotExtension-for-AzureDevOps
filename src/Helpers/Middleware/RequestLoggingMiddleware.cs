@@ -24,12 +24,15 @@ public class RequestLoggingMiddleware
             _logger.LogDebug("Query String: {QueryString}", context.Request.QueryString);
 
             // Log body (if applicable)
-            if (context.Request.ContentLength > 0 && context.Request.Body.CanSeek)
+            if (context.Request.ContentLength > 0)
             {
                 context.Request.EnableBuffering(); // Allow reading the body multiple times
-                using var reader = new StreamReader(context.Request.Body);
+                var copyBodyStream = new MemoryStream();
+                await context.Request.Body.CopyToAsync(copyBodyStream);
+                context.Request.Body.Position = 0;
+                copyBodyStream.Position = 0;
+                using var reader = new StreamReader(copyBodyStream);
                 var body = await reader.ReadToEndAsync();
-                context.Request.Body.Position = 0; // Reset the stream position for further processing
                 _logger.LogDebug("Body: {Body}", body);
             }
         }
