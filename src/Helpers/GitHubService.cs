@@ -146,18 +146,48 @@ public class GitHubService
         throw new InvalidOperationException($"Key {keyID} not found in public keys");
     }
 
-    public static async Task<HttpResponseMessage> GHCopilotChatCompletion(string githubToken) {
-
+    public static async Task<HttpResponseMessage> GHCopilotChatCompletion(string githubToken, JsonDocument history, object content) {
         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://api.githubcopilot.com/chat/completions");
         request.Headers.Add("User-Agent", ".NET App");
-        // Add the GitHub token if provided to avoid strict rate limiting
+        
         if (!string.IsNullOrEmpty(githubToken))
         {
             request.Headers.Add("Authorization", $"Bearer {githubToken}");
         }
 
-        request.Content = new StringContent("{\"model\":\"gpt-4o\",\"stream\":true,\"messages\":[{\"role\":\"assistant\",\"content\":\"Hello, world!\"}]}");
+        // Extract messages from the history
+        var messages = new List<object>();
+        
+        // Try to find messages array in the history
+        if (history.RootElement.TryGetProperty("messages", out var messagesElement) && 
+            messagesElement.ValueKind == JsonValueKind.Array)
+        {
+            // Convert existing messages to list
+            foreach (var message in messagesElement.EnumerateArray())
+            {
+                messages.Add(new {
+                    role = message.GetProperty("role").GetString(),
+                    content = message.GetProperty("content").GetString()
+                });
+            }
+        }
+        
+        // Add a new message
+        messages.Add(content);
+        
+        // Create the request payload
+        var requestPayload = new {
+            model = "gpt-4o",
+            stream = true,
+            messages = messages
+        };
+        
+        // Serialize the payload to JSON
+        string jsonPayload = JsonSerializer.Serialize(requestPayload);
+        
+        request.Content = new StringContent(jsonPayload);
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        
         var _httpClient = new HttpClient();
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         return response;
@@ -165,6 +195,107 @@ public class GitHubService
 
     public static string SimpleResponseMessage(string message) {
         return "data: {\"choices\":[{\"finish_reason\":\"stop\",\"delta\":{\"role\":\"assistant\",\"content\":\"" + message + "\"}}]}\n\ndata: [DONE]";
+    }
+
+    public static async Task<(string role, string content)> ExtractLastMessageFromCompletionResponse(HttpResponseMessage response)
+    {
+        if (response == null || !response.IsSuccessStatusCode)
+        {
+            throw new ArgumentException("Invalid response or response not successful", nameof(response));
+        }
+
+        // Read the response content
+        string responseContent = await response.Content.ReadAsStringAsync();
+        
+        // Check if the response is in Server-Sent Events format (data: prefix)
+        if (responseContent.StartsWith("data:"))
+        {
+            // Handle SSE format
+            // Split by newlines to get individual events
+            var events = responseContent.Split("\n\n", StringSplitOptions.RemoveEmptyEntries);
+            
+            string content = string.Empty;
+            string role = string.Empty;
+
+            // Loop through all events
+            for (int i = 0; i < events.Length; i++)
+            {
+                if (!events[i].Contains("[DONE]"))
+                {
+                    // Extract the JSON part after "data: "
+                    string jsonPart = events[i].Substring(events[i].IndexOf("data: ") + 6);
+                    using var jsonDoc = JsonDocument.Parse(jsonPart);
+                    
+                    // Navigate to choices[0].delta or choices[0].message
+                    if (jsonDoc.RootElement.TryGetProperty("choices", out var choices) && 
+                        choices.GetArrayLength() > 0)
+                    {
+                        var choice = choices[0];
+                        
+                        // Try delta (for streaming) then message (for non-streaming)
+                        JsonElement contentElement;
+                        JsonElement roleElement;
+                        
+                        if (choice.TryGetProperty("delta", out var delta))
+                        {
+                            delta.TryGetProperty("content", out contentElement);
+                            delta.TryGetProperty("role", out roleElement);
+                        }
+                        else if (choice.TryGetProperty("message", out var message))
+                        {
+                            message.TryGetProperty("content", out contentElement);
+                            message.TryGetProperty("role", out roleElement);
+                        }
+                        else
+                        {
+                            continue; // Skip if neither delta nor message exists
+                        }
+                        
+                        content += contentElement.ValueKind != JsonValueKind.Undefined ? 
+                            contentElement.GetString() ?? string.Empty : string.Empty;
+                        
+                        role = roleElement.ValueKind != JsonValueKind.Undefined ? 
+                            roleElement.GetString() ?? "assistant" : "assistant";
+                        
+                    }
+                }
+            }
+
+            return (role, content);
+        }
+        else
+        {
+            // Handle regular JSON response format
+            try
+            {
+                using var jsonDoc = JsonDocument.Parse(responseContent);
+                
+                if (jsonDoc.RootElement.TryGetProperty("choices", out var choices) && 
+                    choices.GetArrayLength() > 0)
+                {
+                    var choice = choices[0];
+                    
+                    if (choice.TryGetProperty("message", out var message))
+                    {
+                        string content = message.TryGetProperty("content", out var contentElement) ? 
+                            contentElement.GetString() ?? string.Empty : string.Empty;
+                        
+                        string role = message.TryGetProperty("role", out var roleElement) ? 
+                            roleElement.GetString() ?? "assistant" : "assistant";
+                        
+                        return (role, content);
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // If JSON parsing fails, return the raw content
+                return ("assistant", responseContent);
+            }
+        }
+        
+        // Default return if no message found
+        return ("assistant", string.Empty);
     }
 }
 

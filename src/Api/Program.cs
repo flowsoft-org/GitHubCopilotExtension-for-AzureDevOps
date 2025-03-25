@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -48,7 +50,20 @@ app.MapPost("/copilot", async (HttpContext context) =>
     }
 
     // All good
-    return Results.Text(GitHubService.SimpleResponseMessage("Welcome!"), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
+    var prompt = new { role = "system", content = "Did the user already give a Azure DevOps Organization URL? If no then answer with 'NO', otherwise answer with the URL e.g. 'https://dev.azure.com/org123'." };
+    var httpAnswer = await GitHubService.GHCopilotChatCompletion(context.Request.Headers["X-GitHub-Token"]!, JsonSerializer.Deserialize<JsonDocument>(requestBody)!, prompt);
+
+    var (role, answer) = await GitHubService.ExtractLastMessageFromCompletionResponse(httpAnswer);
+    app.Logger.LogDebug($"Role: {role} Answer: {answer}");
+
+    if (answer == "NO") {
+        app.Logger.LogError("User did not provide a Azure DevOps Organization URL.");
+        return Results.Text(GitHubService.SimpleResponseMessage("Please provide a Azure DevOps Organization URL."), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
+    } 
+    else {
+        var azdoClient = new AzureDevOpsClient(answer, context.Request.Headers["x-azure-devops-token"]!);
+         return Results.Text(GitHubService.SimpleResponseMessage($"Welcome you have {await azdoClient.GetOpenWorkItemsCountAsync()} open Workitems!"), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
+    }
 })
 .WithName("PostCopilotMessage");
 
