@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Helpers;
+using StackExchange.Redis;
+using System.Text.Json;
 const string STATE_COOKIE_GITHUB = "oauth_state_github";
 const string STATE_COOKIE_ENTRA = "oauth_state_entra";
 
@@ -11,7 +13,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddMemoryCache();
+// builder.Services.AddMemoryCache();
+builder.AddRedisClient(connectionName: "tokenCache");
+
 var app = builder.Build();
 
 // Use default middleware
@@ -180,7 +184,7 @@ string GenerateEntraIdAuthUrlAndSetStateCookie(HttpContext context, long gitHubU
 
 
 // Add a new endpoint for GitHub Copilot Extension
-app.MapGet("/postauth-entra", async (HttpContext context, IMemoryCache memoryCache) =>
+app.MapGet("/postauth-entra", async (HttpContext context, IConnectionMultiplexer connectionMux) =>
 {
     var state = context.Request.Query["state"].ToString().Split('_')[0];
     var gitHubUserId = context.Request.Query["state"].ToString().Split('_')[1];
@@ -237,7 +241,8 @@ app.MapGet("/postauth-entra", async (HttpContext context, IMemoryCache memoryCac
     var token = await Helpers.OAuth2.ConvertToTokenResponse(tokenResponse.Content);
 
     // Put into token store
-    memoryCache.Set(gitHubUserId, token); // Set the token in memory cache for 60 minutes
+    // Set the token in Redis for 60 minutes
+    connectionMux.GetDatabase().StringSet(gitHubUserId, JsonSerializer.Serialize(token));
 
     return Results.Text("Authorized and mapped accounts. You can now return to your Copilot Chat.", statusCode: 202);
 })
@@ -246,7 +251,7 @@ app.MapGet("/postauth-entra", async (HttpContext context, IMemoryCache memoryCac
 
 
 // Add a new endpoint for GitHub Copilot Extension
-app.MapPost("/token", async (HttpContext context, IMemoryCache memoryCache) =>
+app.MapPost("/token", async (HttpContext context, IConnectionMultiplexer connectionMux) =>
 {
     // Log the received request body
     using var reader = new StreamReader(context.Request.Body);
@@ -274,7 +279,8 @@ app.MapPost("/token", async (HttpContext context, IMemoryCache memoryCache) =>
 
     app.Logger.LogDebug("Received GitHub User ID: {GitHubUserId}", gitHubUserId);
     // Retrieve the access token from the token store
-    if (!memoryCache.TryGetValue(gitHubUserId, out OAuth2TokenResponse? token))
+    var tokenString = await connectionMux.GetDatabase().StringGetAsync(gitHubUserId);
+    if (!tokenString.HasValue)
     {
         app.Logger.LogError("Access token not found for GitHub User ID: {GitHubUserId}", gitHubUserId);
 
@@ -285,16 +291,18 @@ app.MapPost("/token", async (HttpContext context, IMemoryCache memoryCache) =>
             error = "invalid_request"
         }, statusCode: 200);
     }
-
+    var retrievedObject = tokenString.ToString() ?? throw new InvalidOperationException("Token is null");
+    var token = JsonSerializer.Deserialize<OAuth2TokenResponse>(retrievedObject) ?? throw new InvalidOperationException("Deserialized token is null");
+    
     //Return a response with the received data
     return Results.Json(new
     {
-        access_token = token?.AccessToken,
+        access_token = token.AccessToken,
         token_type = "Bearer",
         issued_token_type = "urn:ietf:params:oauth:token-type:access_token",
         expires_in = 60, // for testing purposes, set to 60 seconds
     }, statusCode: 200);
 })
-.WithName("PostTokeExchange");
+.WithName("PostTokenExchange");
 
 app.Run();
