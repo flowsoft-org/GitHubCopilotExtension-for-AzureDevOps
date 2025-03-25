@@ -33,12 +33,17 @@ public class OAuth2
         {
             var content = await tokenResponse.ReadAsStringAsync();
             var queryParams = System.Web.HttpUtility.ParseQueryString(content);
-            return new OAuth2TokenResponse(
-                queryParams["access_token"].ToString() ?? string.Empty,
-                queryParams["token_type"].ToString() ?? string.Empty,
-                int.Parse(queryParams["expires_in"].ToString() ?? "0"),
-                queryParams["refresh_token"].ToString() ?? string.Empty
-            );
+            if (queryParams == null || queryParams.Count == 0)
+            {
+                throw new InvalidOperationException("Failed to read token response");
+            } else {
+                return new OAuth2TokenResponse(
+                    queryParams["access_token"]?.ToString() ?? string.Empty,
+                    queryParams["token_type"]?.ToString() ?? string.Empty,
+                    int.Parse(queryParams["expires_in"]?.ToString() ?? "0"),
+                    queryParams["refresh_token"]?.ToString() ?? string.Empty
+                );
+            }
         } else {
             throw new UnsupportedContentTypeException($"Unsupported content type: {tokenResponse.Headers.ContentType?.MediaType}");
         }
@@ -61,7 +66,7 @@ public class OAuth2
             throw new ArgumentException("Missing 'kid' in id_token.");
         }
         // Get the signing keys endpoint
-        var signingKey = await GetSigningKeyAsync(issuer, kid.ToString());
+        var signingKey = await GetSigningKeyAsync(issuer, kid?.ToString()!);
 
         // Validate the token (e.g., signature, issuer, audience)
         // You need the signing key and validation parameters for this

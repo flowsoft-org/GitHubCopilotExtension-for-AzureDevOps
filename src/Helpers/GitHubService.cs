@@ -12,6 +12,7 @@ public class GitHubService
     private readonly string _githubToken;
     private readonly ILogger _logger;
     const string GITHUB_COPILOT_KEYS_ENDPOINT = "https://api.github.com/meta/public_keys/copilot_api";
+    private static Dictionary<string, byte[]?> _publicKeyCache = new Dictionary<string, byte[]?>();
 
     public GitHubService(string githubToken, ILogger logger)
     {
@@ -53,7 +54,7 @@ public class GitHubService
         }
     }
 
-    public static async Task<bool> IsValidGitHubRequest(string payload, string keyID, string signature, ILogger logger)
+    public static async Task<bool> IsValidGitHubRequest(string payload, string keyID, string signature, ILogger logger, string githubToken = "")
     {
         // Validate the payload
         if (string.IsNullOrWhiteSpace(payload))
@@ -76,7 +77,7 @@ public class GitHubService
             return false;
         }
 
-        byte[] publicKeyDecodedKeyData = await GetPublicKey(GITHUB_COPILOT_KEYS_ENDPOINT, keyID);
+        byte[] publicKeyDecodedKeyData = await GetPublicKey(GITHUB_COPILOT_KEYS_ENDPOINT, keyID, githubToken);
         byte[] decodedSignature = Convert.FromBase64String(signature);
 
         var signer = SignerUtilities.GetSigner("SHA256withECDSA");
@@ -90,8 +91,12 @@ public class GitHubService
     }
 
     // Fetches the public key from the GitHub API
-    static async Task<byte[]> GetPublicKey(string endpoint, string keyId, string githubToken = "")
+    static async Task<byte[]> GetPublicKey(string endpoint, string keyId, string githubToken)
     {
+        if (_publicKeyCache.TryGetValue(keyId, out byte[]? cachedKey))
+        {
+            return cachedKey ?? throw new InvalidOperationException("Cached key is null");
+        }
         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, endpoint);
         request.Headers.Add("User-Agent", ".NET App");
         // Add the GitHub token if provided to avoid strict rate limiting
@@ -111,6 +116,7 @@ public class GitHubService
         }
         string encodedKeyData = FindKey(publicKeysElement, keyId);
         byte[] decodedKeyData = Convert.FromBase64String(encodedKeyData);
+        _publicKeyCache[keyId] = decodedKeyData;
         return decodedKeyData;
     }
 
@@ -138,6 +144,27 @@ public class GitHubService
         }
 
         throw new InvalidOperationException($"Key {keyID} not found in public keys");
+    }
+
+    public static async Task<HttpResponseMessage> GHCopilotChatCompletion(string githubToken) {
+
+        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://api.githubcopilot.com/chat/completions");
+        request.Headers.Add("User-Agent", ".NET App");
+        // Add the GitHub token if provided to avoid strict rate limiting
+        if (!string.IsNullOrEmpty(githubToken))
+        {
+            request.Headers.Add("Authorization", $"Bearer {githubToken}");
+        }
+
+        request.Content = new StringContent("{\"model\":\"gpt-4o\",\"stream\":true,\"messages\":[{\"role\":\"assistant\",\"content\":\"Hello, world!\"}]}");
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        var _httpClient = new HttpClient();
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+        return response;
+    }
+
+    public static string SimpleResponseMessage(string message) {
+        return "data: {\"choices\":[{\"finish_reason\":\"stop\",\"delta\":{\"role\":\"assistant\",\"content\":\"" + message + "\"}}]}\n\ndata: [DONE]";
     }
 }
 
