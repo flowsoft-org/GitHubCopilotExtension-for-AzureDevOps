@@ -1,3 +1,14 @@
+# Contributing
+
+## Set up Entra Id App
+
+TODO...
+
+## Set up GitHub App
+
+TODO...
+
+## Setup local development
 
 Developer certificates:
 ```bash
@@ -22,4 +33,17 @@ or
 dotnet watch run --project ./src/AppHost/
 ```
 
-Set up GitHub App
+## Azure infrastructure
+
+Recreate azd infrastructure from Aspire project
+
+```bash
+azd infra synth
+```
+
+Deployment
+```bash
+azd up
+```
+
+
