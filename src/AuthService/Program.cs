@@ -62,9 +62,10 @@ app.MapGet("/preauth", (HttpContext context) =>
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
     // limited options available for GitHub
     var state = Guid.NewGuid().ToString();
+    var redirectDomain = builder.Configuration["GitHubApp:AppAuthDomain"] ?? context.Request.Host.Host;
     var authUrl = $"{builder.Configuration["GitHubApp:Instance"]}/authorize" +
                 $"?client_id={builder.Configuration["GitHubApp:ClientId"]}" +
-                $"&redirect_uri={Uri.EscapeDataString($"{context.Request.Scheme}://{builder.Configuration["GitHubApp:AppAuthDomain"]}{builder.Configuration["GitHubApp:CallbackPath"]}")}" +
+                $"&redirect_uri={Uri.EscapeDataString($"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["GitHubApp:CallbackPath"]}")}" +
                 $"&state={state}";
 
     context.Response.Cookies.Append(
@@ -160,10 +161,11 @@ string GenerateEntraIdAuthUrlAndSetStateCookie(HttpContext context, long gitHubU
 {
     // Generate the authorization URL for Azure DevOps/Entra ID Application
     var state = Guid.NewGuid().ToString();
+    var redirectDomain = builder.Configuration["EntraIdApp:AppAuthDomain"] ?? context.Request.Host.Host;
     var authUrl = $"{builder.Configuration["EntraIdApp:Instance"]}{builder.Configuration["EntraIdApp:TenantId"]}/oauth2/v2.0/authorize" +
                 $"?client_id={builder.Configuration["EntraIdApp:ClientId"]}" +
                 $"&response_type=code" +
-                $"&redirect_uri={Uri.EscapeDataString($"{context.Request.Scheme}://{builder.Configuration["EntraIdApp:AppAuthDomain"]}{builder.Configuration["EntraIdApp:CallbackPath"]}")}" +
+                $"&redirect_uri={Uri.EscapeDataString($"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["EntraIdApp:CallbackPath"]}")}" +
                 $"&response_mode=query" +
                 $"&scope=openid profile email {Uri.EscapeDataString("https://app.vssps.visualstudio.com/user_impersonation")}" +
                 $"&state={state}_{Uri.EscapeDataString(gitHubUserId.ToString())}" + // Add your state value here

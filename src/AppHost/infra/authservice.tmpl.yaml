@@ -13,14 +13,16 @@ properties:
       dotnet:
         autoConfigureDataProtection: true
     ingress:
-      external: false
+      external: true
       targetPort: {{ targetPortOrDefault 8080 }}
       transport: http
-      allowInsecure: true
+      allowInsecure: false
     registries:
       - server: {{ .Env.AZURE_CONTAINER_REGISTRY_ENDPOINT }}
         identity: {{ .Env.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID }}
     secrets:
+      - name: connectionstrings--secrets
+        value: '{{ .Env.SECRETS_VAULTURI }}'
       - name: connectionstrings--tokencache
         value: '{{ .Env.TOKENCACHE_CONNECTIONSTRING }}'
   template:
@@ -32,14 +34,38 @@ properties:
             value: {{ .Env.MANAGED_IDENTITY_CLIENT_ID }}
           - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
             value: "true"
+          - name: ENTRAIDAPP__CALLBACKPATH
+            value: /postauth-entra
+          - name: ENTRAIDAPP__CLIENTID
+            value: e05ba1f1-9598-4a91-aad0-db3cb92820ad
+          - name: ENTRAIDAPP__DOMAIN
+            value: msft.flow-soft.com
+          - name: ENTRAIDAPP__INSTANCE
+            value: https://login.microsoftonline.com/
+          - name: ENTRAIDAPP__TENANTID
+            value: 271a79f4-652f-4dbe-b588-19953b85a0ef
+          - name: GITHUBAPP__CALLBACKPATH
+            value: /postauth-github
+          - name: GITHUBAPP__CLIENTID
+            value: Iv23liB3KClCyyCQEnQL
+          - name: GITHUBAPP__INSTANCE
+            value: https://github.com/login/oauth/
+          - name: GITHUBAPP__ISSUER
+            value: https://github.com/login/oauth
           - name: HTTP_PORTS
             value: '{{ targetPortOrDefault 0 }}'
+          - name: LOGGING__LOGLEVEL__DEFAULT
+            value: Debug
+          - name: LOGGING__LOGLEVEL__MICROSOFT.ASPNETCORE
+            value: Debug
           - name: OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES
             value: "true"
           - name: OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES
             value: "true"
           - name: OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY
             value: in_memory
+          - name: ConnectionStrings__secrets
+            secretRef: connectionstrings--secrets
           - name: ConnectionStrings__tokenCache
             secretRef: connectionstrings--tokencache
     scale:

@@ -32,6 +32,15 @@ module resources 'resources.bicep' = {
   }
 }
 
+module secrets 'secrets/secrets.module.bicep' = {
+  name: 'secrets'
+  scope: rg
+  params: {
+    location: location
+    principalId: resources.outputs.MANAGED_IDENTITY_PRINCIPAL_ID
+    principalType: 'ServicePrincipal'
+  }
+}
 module tokenCache 'tokenCache/tokenCache.module.bicep' = {
   name: 'tokenCache'
   scope: rg
@@ -51,4 +60,5 @@ output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.AZURE_CONTAINER_
 output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_NAME
 output AZURE_CONTAINER_APPS_ENVIRONMENT_ID string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_ID
 output AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN
+output SECRETS_VAULTURI string = secrets.outputs.vaultUri
 output TOKENCACHE_CONNECTIONSTRING string = tokenCache.outputs.connectionString
