@@ -1,0 +1,7 @@
+@AuthService_HostAddress = http://localhost:5132
+@id_token = {{id_token}}
+
+POST {{AuthService_HostAddress}}/token
+Accept: application/json
+
+grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token={{id_token}}&subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aid_token

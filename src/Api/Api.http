@@ -1,0 +1,179 @@
+@Api_HostAddress = http://localhost:5018
+
+POST {{Api_HostAddress}}/copilot
+Accept: application/json
+x-request-id: 778513148e73c54ceed7ca1fc7fa06c5
+x-real-ip: 10.240.4.161
+x-forwarded-port: 443
+x-forwarded-scheme: https
+x-original-uri: /copilot
+x-scheme: https
+x-github-public-key-signature: MEUCIE9yS3F56y12adU/c4ooaSd3aiPezRSch7rpAsW3zjIQAiEA23FB68Ec+rIMlR3MZI/dnq672HPNzvq1SjTZXxItvjY=
+x-azure-devops-token:
+x-github-token: ghu_fake
+x-github-public-key-identifier: 4fe6b016179b74078ade7581abf4e84fb398c6fae4fb973972235b84fcd70ca3
+x-original-proto: https
+x-forwarded-proto: https
+x-forwarded-host: orange-yodel.app.github.dev
+
+{
+    "copilot_thread_id": "ae6e6cc0-9015-495b-b615-62a667c89468",
+    "messages": [
+        {
+            "role": "user",
+            "content": "test",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "test2",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "test3",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "test4",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "test5",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "hello",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "hello",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "hello",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "hello",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "copilot_references": [],
+            "copilot_confirmations": null
+        },
+        {
+            "role": "user",
+            "content": "hello",
+            "copilot_references": [
+                {
+                    "type": "github.repository",
+                    "data": {
+                        "type": "repository",
+                        "id": 948472397,
+                        "name": "GitHubCopilotExtension-for-AzureDevOps",
+                        "ownerLogin": "flowsoft-org",
+                        "ownerType": "",
+                        "readmePath": "",
+                        "description": "",
+                        "commitOID": "",
+                        "ref": "",
+                        "refInfo": {
+                            "name": "",
+                            "type": ""
+                        },
+                        "visibility": "",
+                        "languages": null
+                    },
+                    "id": "flowsoft-org/GitHubCopilotExtension-for-AzureDevOps",
+                    "is_implicit": false,
+                    "metadata": {
+                        "display_name": "",
+                        "display_icon": "",
+                        "display_url": ""
+                    }
+                }
+            ],
+            "copilot_confirmations": null
+        }
+    ],
+    "stop": null,
+    "top_p": 1,
+    "temperature": 0.1,
+    "max_tokens": 4096,
+    "presence_penalty": 0,
+    "frequency_penalty": 0,
+    "response_format": null,
+    "copilot_skills": [],
+    "agent": "test-copilot",
+    "client_id": "Iv48liB3KClCyyCQEnQL",
+    "tools": null,
+    "functions": null,
+    "model": ""
+}
+###

@@ -1,0 +1,52 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "principalId": {
+        "value": "${AZURE_PRINCIPAL_ID}"
+      },
+      "ENTRAIDAPP_APPAUTHDOMAIN": {
+        "value": "${AZURE_ENTRAIDAPP_APPAUTHDOMAIN}"
+      },
+      "ENTRAIDAPP_CALLBACKPATH": {
+        "value": "${AZURE_ENTRAIDAPP_CALLBACKPATH}"
+      },
+      "ENTRAIDAPP_CLIENTID": {
+        "value": "${AZURE_ENTRAIDAPP_CLIENTID}"
+      },
+      "ENTRAIDAPP_DOMAIN": {
+        "value": "${AZURE_ENTRAIDAPP_DOMAIN}"
+      },
+      "ENTRAIDAPP_INSTANCE": {
+        "value": "${AZURE_ENTRAIDAPP_INSTANCE}"
+      },
+      "ENTRAIDAPP_TENANTID": {
+        "value": "${AZURE_ENTRAIDAPP_TENANTID}"
+      },
+      "GITHUBAPP_APPAUTHDOMAIN": {
+        "value": "${AZURE_GITHUBAPP_APPAUTHDOMAIN}"
+      },
+      "GITHUBAPP_CALLBACKPATH": {
+        "value": "${AZURE_GITHUBAPP_CALLBACKPATH}"
+      },
+      "GITHUBAPP_CLIENTID": {
+        "value": "${AZURE_GITHUBAPP_CLIENTID}"
+      },
+      "GITHUBAPP_CLIENTID_DEV": {
+        "value": "${AZURE_GITHUBAPP_CLIENTID_DEV}"
+      },
+      "GITHUBAPP_INSTANCE": {
+        "value": "${AZURE_GITHUBAPP_INSTANCE}"
+      },
+      "GITHUBAPP_ISSUER": {
+        "value": "${AZURE_GITHUBAPP_ISSUER}"
+      },
+      "environmentName": {
+        "value": "${AZURE_ENV_NAME}"
+      },
+      "location": {
+        "value": "${AZURE_LOCATION}"
+      }
+    }
+  }
+  
