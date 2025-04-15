@@ -1,8 +1,10 @@
-using Microsoft.Extensions.Caching.Memory;
 using Helpers;
 using StackExchange.Redis;
 using System.Text.Json;
 using Azure.Identity;
+using Microsoft.Extensions.Azure;
+using StackExchange.Redis.Configuration;
+
 const string STATE_COOKIE_GITHUB = "oauth_state_github";
 const string STATE_COOKIE_ENTRA = "oauth_state_entra";
 
@@ -11,13 +13,34 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults
 builder.AddServiceDefaults();
 
-// Add Azure Key Vault configuration
-builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
+// Add Azure Key Vault configuration if not local development
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
+}
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.AddRedisClient(connectionName: "tokenCache");
+
+// Redis
+var azureOptionsProvider = new AzureOptionsProvider();
+
+var configurationOptions = ConfigurationOptions.Parse(
+    builder.Configuration.GetConnectionString("tokenCache") ?? 
+    throw new InvalidOperationException("Could not find a 'tokenCache' connection string."));
+
+if (configurationOptions.EndPoints.Any(azureOptionsProvider.IsMatch))
+{
+    await configurationOptions.ConfigureForAzureWithTokenCredentialAsync(
+        new DefaultAzureCredential());
+}
+
+builder.AddRedisClient(connectionName: "tokenCache", configureOptions: options =>
+{
+    options.Defaults = configurationOptions.Defaults;
+});
+
 
 var app = builder.Build();
 
@@ -62,7 +85,7 @@ app.MapGet("/preauth", (HttpContext context) =>
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
     // limited options available for GitHub
     var state = Guid.NewGuid().ToString();
-    var redirectDomain = builder.Configuration["GitHubApp:AppAuthDomain"] ?? context.Request.Host.Host;
+    var redirectDomain = builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:AppAuthDomain"] : context.Request.Host.Host;
     var authUrl = $"{builder.Configuration["GitHubApp:Instance"]}/authorize" +
                 $"?client_id={builder.Configuration["GitHubApp:ClientId"]}" +
                 $"&redirect_uri={Uri.EscapeDataString($"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["GitHubApp:CallbackPath"]}")}" +
@@ -117,11 +140,12 @@ app.MapGet("/postauth-github", async (HttpContext context) =>
     {
         // Exchange the authorization code for an access token
         var tokenUrl = $"{builder.Configuration["GitHubApp:Instance"]}/access_token";
+        var redirectDomain = builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:AppAuthDomain"] : context.Request.Host.Host;
         var tokenRequestBody = new FormUrlEncodedContent(new[] {
-            new KeyValuePair<string, string>("client_id", builder.Configuration["GitHubApp:ClientId"]),
+            new KeyValuePair<string, string>("client_id", builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:ClientId:Dev"] : builder.Configuration["GitHubApp:ClientId"]),
             new KeyValuePair<string, string>("client_secret", builder.Configuration["GitHubApp:ClientSecret"]),
             new KeyValuePair<string, string>("code", code),
-            new KeyValuePair<string, string>("redirect_uri", $"{context.Request.Scheme}://{builder.Configuration["GitHubApp:AppAuthDomain"]}{builder.Configuration["GitHubApp:CallbackPath"]}"),
+            new KeyValuePair<string, string>("redirect_uri", $"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["GitHubApp:CallbackPath"]}"),
         });
 
         var tokenResponse = await new HttpClient().PostAsync(tokenUrl, tokenRequestBody);
@@ -161,7 +185,7 @@ string GenerateEntraIdAuthUrlAndSetStateCookie(HttpContext context, long gitHubU
 {
     // Generate the authorization URL for Azure DevOps/Entra ID Application
     var state = Guid.NewGuid().ToString();
-    var redirectDomain = builder.Configuration["EntraIdApp:AppAuthDomain"] ?? context.Request.Host.Host;
+    var redirectDomain = builder.Environment.IsDevelopment() ? builder.Configuration["EntraIdApp:AppAuthDomain"] : context.Request.Host.Host;
     var authUrl = $"{builder.Configuration["EntraIdApp:Instance"]}{builder.Configuration["EntraIdApp:TenantId"]}/oauth2/v2.0/authorize" +
                 $"?client_id={builder.Configuration["EntraIdApp:ClientId"]}" +
                 $"&response_type=code" +
@@ -226,18 +250,20 @@ app.MapGet("/postauth-entra", async (HttpContext context, IConnectionMultiplexer
     app.Logger.LogDebug("Received code: {Code}", code);
     // Exchange the authorization code for an access token
     var tokenUrl = $"{builder.Configuration["EntraIdApp:Instance"]}{builder.Configuration["EntraIdApp:TenantId"]}/oauth2/v2.0/token";
+    var redirectDomain = builder.Environment.IsDevelopment() ? builder.Configuration["EntraIdApp:AppAuthDomain"] : context.Request.Host.Host;
     var tokenRequestBody = new FormUrlEncodedContent(new[]
     {
         new KeyValuePair<string, string>("client_id", builder.Configuration["EntraIdApp:ClientId"]),
         new KeyValuePair<string, string>("client_secret", builder.Configuration["EntraIdApp:ClientSecret"]),
         new KeyValuePair<string, string>("grant_type", "authorization_code"),
         new KeyValuePair<string, string>("code", code),
-        new KeyValuePair<string, string>("redirect_uri", $"{context.Request.Scheme}://{builder.Configuration["EntraIdApp:AppAuthDomain"]}{builder.Configuration["EntraIdApp:CallbackPath"]}"),
+        new KeyValuePair<string, string>("redirect_uri", $"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["EntraIdApp:CallbackPath"]}"),
     });
     var tokenResponse = await new HttpClient().PostAsync(tokenUrl, tokenRequestBody);
     if (!tokenResponse.IsSuccessStatusCode)
     {
-        app.Logger.LogError("Failed to exchange authorization code for access token.");
+        var reason = await tokenResponse.Content.ReadAsStringAsync();
+        app.Logger.LogError($"Failed to exchange authorization code for access token. Status code: {tokenResponse.StatusCode}. Reason: {reason}");
         return Results.Json(new
         {
             error = "invalid_request"

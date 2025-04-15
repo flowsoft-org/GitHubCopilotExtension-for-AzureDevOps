@@ -12,6 +12,18 @@ param location string
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
+param ENTRAIDAPP_APPAUTHDOMAIN string
+param ENTRAIDAPP_CALLBACKPATH string
+param ENTRAIDAPP_CLIENTID string
+param ENTRAIDAPP_DOMAIN string
+param ENTRAIDAPP_INSTANCE string
+param ENTRAIDAPP_TENANTID string
+param GITHUBAPP_APPAUTHDOMAIN string
+param GITHUBAPP_CALLBACKPATH string
+param GITHUBAPP_CLIENTID string
+param GITHUBAPP_CLIENTID_DEV string
+param GITHUBAPP_INSTANCE string
+param GITHUBAPP_ISSUER string
 
 var tags = {
   'azd-env-name': environmentName
