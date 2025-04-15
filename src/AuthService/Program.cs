@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Helpers;
 using StackExchange.Redis;
 using System.Text.Json;
+using Azure.Identity;
 const string STATE_COOKIE_GITHUB = "oauth_state_github";
 const string STATE_COOKIE_ENTRA = "oauth_state_entra";
 
@@ -10,10 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults
 builder.AddServiceDefaults();
 
+// Add Azure Key Vault configuration
+builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-// builder.Services.AddMemoryCache();
 builder.AddRedisClient(connectionName: "tokenCache");
 
 var app = builder.Build();

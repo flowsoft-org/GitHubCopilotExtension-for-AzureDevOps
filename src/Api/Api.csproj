@@ -11,9 +11,10 @@
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
     <PackageReference Include="GitHub.Octokit.SDK" Version="0.0.31" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Identity.Web" Version="3.8.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.8.2" />
     <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="19.225.1" />
     <PackageReference Include="Microsoft.VisualStudio.Services.Client" Version="19.225.1" />
+    <PackageReference Include="Aspire.Azure.Security.KeyVault" Version="9.1.0" />
   </ItemGroup>
 
   <ItemGroup>

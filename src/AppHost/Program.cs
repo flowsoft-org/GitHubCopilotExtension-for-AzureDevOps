@@ -27,10 +27,12 @@ var keyVault = builder.AddAzureKeyVault("secrets");
 // Configure environment variables for all services
 var authService = builder.AddProject<Projects.AuthService>("authservice")
        .WithReference(redis)
-       .WithReference(keyVault);
+       .WithReference(keyVault)
+       .WithExternalHttpEndpoints();
 
 var api = builder.AddProject<Projects.Api>("api")
-       .WithReference(keyVault);
+       .WithReference(keyVault)
+       .WithExternalHttpEndpoints();
 
 // Apply environment variables to all services
 ApplyEnvironmentVariables(authService);

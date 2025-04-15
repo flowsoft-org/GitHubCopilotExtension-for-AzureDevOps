@@ -2,10 +2,16 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add service defaults
+builder.AddServiceDefaults();
+
+// Add Azure Key Vault configuration
+builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.AddServiceDefaults();
+builder.Services.AddHttpClient();
 
 // Add logging
 builder.Logging.ClearProviders();
