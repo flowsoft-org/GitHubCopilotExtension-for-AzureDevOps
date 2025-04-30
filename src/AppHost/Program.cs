@@ -23,7 +23,7 @@ ApplyEnvironmentVariables(authService);
 
 // Api Service
 var api = builder.AddProject<Projects.Api>("api")
-       .WithEnvironment("AppAuthDomain", "tobefilledlater")
+       .WithReference(authService)
        .WithEnvironment("Logging__LogLevel__Default", "Debug")
        .WithExternalHttpEndpoints();
 
