@@ -16,12 +16,15 @@ var keyVault = builder.AddAzureKeyVault("secrets");
 var authService = builder.AddProject<Projects.AuthService>("authservice")
        .WithReference(redis)
        .WithReference(keyVault)
+       .WithEnvironment("Logging__LogLevel__Default", "Debug")
        .WithExternalHttpEndpoints();
 
 ApplyEnvironmentVariables(authService);
 
 // Api Service
 var api = builder.AddProject<Projects.Api>("api")
+       .WithEnvironment("AppAuthDomain", "tobefilledlater")
+       .WithEnvironment("Logging__LogLevel__Default", "Debug")
        .WithExternalHttpEndpoints();
 
 builder.Build().Run();

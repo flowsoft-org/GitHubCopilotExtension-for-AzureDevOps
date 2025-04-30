@@ -13,11 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults
 builder.AddServiceDefaults();
 
-// Add Azure Key Vault configuration if not local development
-if (!builder.Environment.IsDevelopment())
-{
-    builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
-}
+// Add Azure Key Vault configuration
+builder.Configuration.AddAzureKeyVaultSecrets(connectionName: "secrets");
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -51,6 +48,9 @@ app.UseDefaultMiddleware();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // overwrite client id and secrets for GitHub
+    builder.Configuration["GitHubApp:ClientId"] = builder.Configuration["GitHubApp:ClientId:Dev"];
+    builder.Configuration["GitHubApp:ClientSecret"] = builder.Configuration["GitHubApp:ClientSecret:Dev"];
 }
 
 app.UseHttpsRedirection();
@@ -142,7 +142,7 @@ app.MapGet("/postauth-github", async (HttpContext context) =>
         var tokenUrl = $"{builder.Configuration["GitHubApp:Instance"]}/access_token";
         var redirectDomain = builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:AppAuthDomain"] : context.Request.Host.Host;
         var tokenRequestBody = new FormUrlEncodedContent(new[] {
-            new KeyValuePair<string, string>("client_id", builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:ClientId:Dev"] : builder.Configuration["GitHubApp:ClientId"]),
+            new KeyValuePair<string, string>("client_id", builder.Configuration["GitHubApp:ClientId"]),
             new KeyValuePair<string, string>("client_secret", builder.Configuration["GitHubApp:ClientSecret"]),
             new KeyValuePair<string, string>("code", code),
             new KeyValuePair<string, string>("redirect_uri", $"{context.Request.Scheme}://{redirectDomain}{builder.Configuration["GitHubApp:CallbackPath"]}"),
@@ -325,6 +325,19 @@ app.MapPost("/token", async (HttpContext context, IConnectionMultiplexer connect
     var retrievedObject = tokenString.ToString() ?? throw new InvalidOperationException("Token is null");
     var token = JsonSerializer.Deserialize<OAuth2TokenResponse>(retrievedObject) ?? throw new InvalidOperationException("Deserialized token is null");
     
+    // If token expired initiate re-authentication 
+    // Improvement use Refresh Token to get new access token
+    if (Helpers.OAuth2.IsTokenExpired(token))
+    {
+        app.Logger.LogError("Access token expired for GitHub User ID: {GitHubUserId}", gitHubUserId);
+        // Return Successful HTTP Status, otherwise user will be stuck and can't initiate re-authentication by themselves
+        // chat message endpoint will check for valid entra token and if non provided asks user to go through authentication process again.
+        return Results.Json(new
+        {
+            error = "invalid_request"
+        }, statusCode: 200);
+    }
+
     //Return a response with the received data
     return Results.Json(new
     {
