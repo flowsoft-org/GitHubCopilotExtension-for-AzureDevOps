@@ -22,6 +22,7 @@ ApplyEnvironmentVariables(authService);
 
 // Api Service
 var api = builder.AddProject<Projects.Api>("api")
+       .WithEnvironment("AppAuthDomain", authService.Resource.GetEndpoints().FirstOrDefault()?.Host)
        .WithExternalHttpEndpoints();
 
 builder.Build().Run();

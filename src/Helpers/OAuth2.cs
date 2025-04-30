@@ -123,6 +123,27 @@ public class OAuth2
             return await GetSigningKeyAsync(issuer, kid);
         }
     }
+
+    // Helper method to inspect if given JWT token expired
+    public static bool IsTokenExpired(OAuth2TokenResponse token)
+    {
+        if (string.IsNullOrWhiteSpace(token.AccessToken))
+            throw new ArgumentException("Access token is null or empty.");
+
+        var handler = new JwtSecurityTokenHandler();
+        if (!handler.CanReadToken(token.AccessToken))
+            throw new ArgumentException("Access token is not a valid JWT.");
+
+        var jwt = handler.ReadJwtToken(token.AccessToken);
+        var expClaim = jwt.Claims.FirstOrDefault(c => c.Type == "exp")?.Value;
+        if (expClaim == null)
+            throw new InvalidOperationException("JWT does not contain an 'exp' claim.");
+
+        // exp is in seconds since epoch
+        var expUnix = long.Parse(expClaim);
+        var expDate = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+        return expDate <= DateTime.UtcNow;
+    }
 }
 
 public record OAuth2TokenResponse(string access_token, string token_type, int expires_in, string refresh_token)

@@ -325,6 +325,19 @@ app.MapPost("/token", async (HttpContext context, IConnectionMultiplexer connect
     var retrievedObject = tokenString.ToString() ?? throw new InvalidOperationException("Token is null");
     var token = JsonSerializer.Deserialize<OAuth2TokenResponse>(retrievedObject) ?? throw new InvalidOperationException("Deserialized token is null");
     
+    // If token expired initiate re-authentication 
+    // Improvement use Refresh Token to get new access token
+    if (Helpers.OAuth2.IsTokenExpired(token))
+    {
+        app.Logger.LogError("Access token expired for GitHub User ID: {GitHubUserId}", gitHubUserId);
+        // Return Successful HTTP Status, otherwise user will be stuck and can't initiate re-authentication by themselves
+        // chat message endpoint will check for valid entra token and if non provided asks user to go through authentication process again.
+        return Results.Json(new
+        {
+            error = "invalid_request"
+        }, statusCode: 200);
+    }
+
     //Return a response with the received data
     return Results.Json(new
     {
