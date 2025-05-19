@@ -52,9 +52,18 @@ jobs:
           azd auth login --tenant-id ${{ secrets.AZURE_TENANT_ID }} --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github
           azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Provision and deploy to Azure
-        run: |
-          ENTRAIDAPP_CLIENTID=${{ vars.ENTRAIDAPP_CLIENTID }} \
-          ENTRAIDAPP_TENANTID=${{ vars.ENTRAIDAPP_TENANTID }} \
-          GITHUBAPP_CLIENTID=${{ vars.GITHUBAPP_CLIENTID }} \
-          azd up --no-prompt --environment ghceazdo
+      - name: Provision Infrastructure
+        run: azd provision --no-prompt
+        env:
+          ## Define the additional variables or secrets that are required only for provision
+          ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
+          ENTRAIDAPP_TENANTID: ${{ vars.ENTRAIDAPP_TENANTID }}
+          GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
+
+      - name: Deploy Application
+        run: azd deploy --no-prompt
+        env:
+          ## Define the additional variables or secrets that are required only for deploy
+          ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
+          ENTRAIDAPP_TENANTID: ${{ vars.ENTRAIDAPP_TENANTID }}
+          GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
