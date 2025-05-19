@@ -55,15 +55,8 @@ jobs:
       - name: Provision Infrastructure
         run: azd provision --no-prompt --environment ${{ vars.AZD_ENVIRONMENT_NAME }}
         env:
-          ## Define the additional variables or secrets that are required only for provision
-          ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
-          ENTRAIDAPP_TENANTID: ${{ vars.ENTRAIDAPP_TENANTID }}
-          GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
+          ## if you are using infrastructure parameters from https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/pipeline-create-definition?tabs=GitHub
+          AZD_INITIAL_ENVIRONMENT_CONFIG: ${{ vars.AZD_INITIAL_ENVIRONMENT_CONFIG }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt --environment ${{ vars.AZD_ENVIRONMENT_NAME }}
-        env:
-          ## Define the additional variables or secrets that are required only for deploy
-          ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
-          ENTRAIDAPP_TENANTID: ${{ vars.ENTRAIDAPP_TENANTID }}
-          GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
