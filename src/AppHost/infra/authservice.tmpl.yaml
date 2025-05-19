@@ -35,29 +35,29 @@ properties:
           - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
             value: "true"
           - name: ENTRAIDAPP__APPAUTHDOMAIN
-            value: '{{ parameter "ENTRAIDAPP_APPAUTHDOMAIN" }}'
+            value: '{{ parameterWithDefault "ENTRAIDAPP_APPAUTHDOMAIN" ""}}'
           - name: ENTRAIDAPP__CALLBACKPATH
-            value: '{{ parameter "ENTRAIDAPP_CALLBACKPATH" }}'
+            value: '{{ parameterWithDefault "ENTRAIDAPP_CALLBACKPATH" "/postauth-entra"}}'
           - name: ENTRAIDAPP__CLIENTID
             value: '{{ parameter "ENTRAIDAPP_CLIENTID" }}'
           - name: ENTRAIDAPP__DOMAIN
-            value: '{{ parameter "ENTRAIDAPP_DOMAIN" }}'
+            value: '{{ parameterWithDefault "ENTRAIDAPP_DOMAIN" ""}}'
           - name: ENTRAIDAPP__INSTANCE
-            value: '{{ parameter "ENTRAIDAPP_INSTANCE" }}'
+            value: '{{ parameterWithDefault "ENTRAIDAPP_INSTANCE" "https://login.microsoftonline.com/"}}'
           - name: ENTRAIDAPP__TENANTID
             value: '{{ parameter "ENTRAIDAPP_TENANTID" }}'
           - name: GITHUBAPP__APPAUTHDOMAIN
-            value: '{{ parameter "GITHUBAPP_APPAUTHDOMAIN" }}'
+            value: '{{ parameterWithDefault "GITHUBAPP_APPAUTHDOMAIN" ""}}'
           - name: GITHUBAPP__CALLBACKPATH
-            value: '{{ parameter "GITHUBAPP_CALLBACKPATH" }}'
+            value: '{{ parameterWithDefault "GITHUBAPP_CALLBACKPATH" "/postauth-github"}}'
           - name: GITHUBAPP__CLIENTID
             value: '{{ parameter "GITHUBAPP_CLIENTID" }}'
           - name: GITHUBAPP__CLIENTID__DEV
-            value: '{{ parameter "GITHUBAPP_CLIENTID_DEV" }}'
+            value: '{{ parameterWithDefault "GITHUBAPP_CLIENTID_DEV" ""}}'
           - name: GITHUBAPP__INSTANCE
-            value: '{{ parameter "GITHUBAPP_INSTANCE" }}'
+            value: '{{ parameterWithDefault "GITHUBAPP_INSTANCE" "https://github.com/login/oauth/"}}'
           - name: GITHUBAPP__ISSUER
-            value: '{{ parameter "GITHUBAPP_ISSUER" }}'
+            value: '{{ parameterWithDefault "GITHUBAPP_ISSUER" "https://github.com/login/oauth"}}'
           - name: HTTP_PORTS
             value: '{{ targetPortOrDefault 0 }}'
           - name: Logging__LogLevel__Default

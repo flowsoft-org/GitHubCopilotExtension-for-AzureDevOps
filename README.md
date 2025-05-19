@@ -76,18 +76,14 @@ You must create an Entra ID (Azure AD) App Registration to allow the extension t
 You must provide the following configuration values (via environment variables, `appsettings.Development.json`, or user-secrets):
 
 - **GitHubApp:ClientId**: GitHub App Client ID
-- **GitHubApp:ClientSecret**: GitHub App Client Secret
-- **GitHubApp:Instance**: `https://github.com/login/oauth/`
-- **GitHubApp:CallbackPath**: `/postauth-github`
-- **GitHubApp:AppAuthDomain**: Your app's public domain
-- **GitHubApp:Issuer**: `https://github.com/login/oauth`
+- [Optional **GitHubApp:Instance**: Default Value: `https://github.com/login/oauth/`]
+- [Optional **GitHubApp:CallbackPath**: Default Value: `/postauth-github`]
+- [Optional **GitHubApp:Issuer**: Default Value: `https://github.com/login/oauth`]
 - **EntraIdApp:ClientId**: Entra App Registration Client ID
-- **EntraIdApp:ClientSecret**: Entra App Registration Client Secret
-- **EntraIdApp:Instance**: `https://login.microsoftonline.com/`
+- [Optional **EntraIdApp:Instance**: Default Value :`https://login.microsoftonline.com/`]
 - **EntraIdApp:TenantId**: Your Entra tenant ID
-- **EntraIdApp:CallbackPath**: `/postauth-entra`
-- **EntraIdApp:AppAuthDomain**: Your app's public domain
-- **EntraIdApp:Domain**: Your Entra domain
+- [Optional **EntraIdApp:CallbackPath**: Default Value: `/postauth-entra`]
+- [Optional **EntraIdApp:Domain**: Your Entra Id domain (e.g. xyz.onmicrosoft.com)]
 
 You can set these using [dotnet user-secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) for local development:
 

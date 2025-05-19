@@ -40,6 +40,10 @@ Follow these steps to set up your environment for local development (including C
 7. **Codespaces only:**
    - Allow public access to API and AuthService endpoints in your Codespace.
    - Ensure your app registrations (GitHub and Entra ID) include your Codespace domain in their redirect URIs.
+8. **Configuration**
+  You must provide the following configuration values (via environment variables, `appsettings.Development.json`:
+   - **GitHubApp:AppAuthDomain**: Your local development accessible domain (e.g. Codespace Domain)
+   - **EntraIdApp:AppAuthDomain**: Your local development accessible domain (e.g. Codespace Domain)
 
 ## Cloud Deployment and Key Vault
 
