@@ -48,7 +48,9 @@ jobs:
         uses: azure/setup-azd@v2
 
       - name: Authenticate with Azure using azd and OIDC
-        run: azd auth login --tenant-id ${{ secrets.AZURE_TENANT_ID }} --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github
-
+        run: |
+          azd auth login --tenant-id ${{ secrets.AZURE_TENANT_ID }} --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github
+          azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
       - name: Provision and deploy to Azure
         run: azd up --no-prompt --environment ghceazdo
