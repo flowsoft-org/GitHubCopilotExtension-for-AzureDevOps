@@ -51,11 +51,12 @@ jobs:
         run: |
           azd auth login --tenant-id ${{ secrets.AZURE_TENANT_ID }} --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github
           azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azd config set defaults.location ${{ vars.AZURE_LOCATION }}
 
       - name: Provision Infrastructure
         run: azd provision --no-prompt --environment ${{ vars.AZD_ENVIRONMENT_NAME }}
         env:
-          ## if you are using infrastructure parameters from https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/pipeline-create-definition?tabs=GitHub
+          ## if you are using infrastructure parameters (value use json format as ./azure/<env>/config.json) from https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/pipeline-create-definition?tabs=GitHub
           AZD_INITIAL_ENVIRONMENT_CONFIG: ${{ vars.AZD_INITIAL_ENVIRONMENT_CONFIG }}
 
       - name: Deploy Application
