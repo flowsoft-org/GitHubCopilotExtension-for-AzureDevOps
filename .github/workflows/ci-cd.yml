@@ -57,5 +57,8 @@ jobs:
           enable-AzPSSession: false
           allow-no-subscriptions: false
 
+      - name: Authenticate with Azure using azd and OIDC
+        run: azd auth login --federated-credential-provider github
+      
       - name: Provision and deploy to Azure
         run: azd up --no-prompt --environment ghceazdo
