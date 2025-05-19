@@ -49,7 +49,7 @@ app.MapPost("/copilot", async (HttpContext context) =>
     // Check if the account is already mapped to Azure DevOps if not the x-azure-devops-token header is empty
     if (context.Request.Headers["x-azure-devops-token"].FirstOrDefault(string.Empty) == string.Empty){
         app.Logger.LogError("Azure DevOps token is missing. User needs to reauthenticate.");
-        return Results.Text(GitHubService.SimpleResponseMessage("Please reauthenticate the GitHub Copilot Extension to access Azure DevOps by visiting "+ builder.Configuration["services:authservice:https:0"] +"/preauth"), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
+        return Results.Text(GitHubService.SimpleResponseMessage("Please reauthenticate the GitHub Copilot Extension to access Azure DevOps by visiting "+ app.Configuration["services:authservice:https:0"] +"/preauth"), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
     }
 
     // All good
