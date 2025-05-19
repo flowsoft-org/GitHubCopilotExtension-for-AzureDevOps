@@ -1,0 +1,61 @@
+# This workflow builds, tests, and deploys the project using azd for Azure deployment
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./src/GHCPEAZDO.sln
+
+      - name: Build
+        run: dotnet build ./src/GHCPEAZDO.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test ./src/GHCPEAZDO.sln --no-build --verbosity normal
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install Azure Developer CLI (azd)
+        uses: azure/setup-azd@v2
+
+      - name: Log in to Azure using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.ENTRAIDAPP_CLIENTID }}
+          tenant-id: ${{ vars.ENTRAIDAPP_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: false
+          allow-no-subscriptions: false
+
+      - name: Provision and deploy to Azure
+        run: azd up --no-prompt --environment ghceazdo

@@ -33,7 +33,8 @@
 				"streetsidesoftware.code-spell-checker",
 				"ms-azuretools.vscode-bicep",
 				"ms-dotnettools.csdevkit",
-				"ms-dotnettools.csharp"
+				"ms-dotnettools.csharp",
+				"github.vscode-github-actions"
 			]
 		}
 	}
