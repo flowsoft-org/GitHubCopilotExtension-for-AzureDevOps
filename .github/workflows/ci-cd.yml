@@ -53,7 +53,7 @@ jobs:
           azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision Infrastructure
-        run: azd provision --no-prompt
+        run: azd provision --no-prompt --environment ${{ vars.AZD_ENVIRONMENT_NAME }}
         env:
           ## Define the additional variables or secrets that are required only for provision
           ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
@@ -61,7 +61,7 @@ jobs:
           GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
 
       - name: Deploy Application
-        run: azd deploy --no-prompt
+        run: azd deploy --no-prompt --environment ${{ vars.AZD_ENVIRONMENT_NAME }}
         env:
           ## Define the additional variables or secrets that are required only for deploy
           ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
