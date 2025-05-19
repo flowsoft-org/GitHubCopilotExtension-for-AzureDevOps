@@ -53,14 +53,13 @@ jobs:
           azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Provision and deploy to Azure
-        run: azd up --no-prompt --environment ghceazdo
-        env:
-          ENTRAIDAPP_CALLBACKPATH: ${{ vars.ENTRAIDAPP_CALLBACKPATH }}
-          ENTRAIDAPP_CLIENTID: ${{ vars.ENTRAIDAPP_CLIENTID }}
-          ENTRAIDAPP_DOMAIN: ${{ vars.ENTRAIDAPP_DOMAIN }}
-          ENTRAIDAPP_INSTANCE: ${{ vars.ENTRAIDAPP_INSTANCE }}
-          ENTRAIDAPP_TENANTID: ${{ vars.ENTRAIDAPP_TENANTID }}
-          GITHUBAPP_CALLBACKPATH: ${{ vars.GITHUBAPP_CALLBACKPATH }}
-          GITHUBAPP_CLIENTID: ${{ vars.GITHUBAPP_CLIENTID }}
-          GITHUBAPP_INSTANCE: ${{ vars.GITHUBAPP_INSTANCE }}
-          GITHUBAPP_ISSUER: ${{ vars.GITHUBAPP_ISSUER }}
+        run: |
+          azd env set ENTRAIDAPP_APPAUTHDOMAIN ""
+          azd env set ENTRAIDAPP_CLIENTID ${{ vars.ENTRAIDAPP_CLIENTID }}
+          azd env set ENTRAIDAPP_TENANTID ${{ vars.ENTRAIDAPP_TENANTID }}
+          azd env set ENTRAIDAPP_INSTANCE ""
+          azd env set ENTRAIDAPP_CALLBACKPATH ""
+          azd env set GITHUBAPP_CLIENTID ${{ vars.GITHUBAPP_CLIENTID }}
+          azd env set GITHUBAPP_INSTANCE ""
+          azd env set GITHUBAPP_ISSUER ""
+          azd up --no-prompt --environment ghceazdo
