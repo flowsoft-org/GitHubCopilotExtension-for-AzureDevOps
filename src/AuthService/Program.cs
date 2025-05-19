@@ -177,6 +177,11 @@ app.MapGet("/postauth-github", async (HttpContext context) =>
             error = "invalid_token"
         }, statusCode: 400);
     }
+    finally 
+    {
+        // Clear the state cookie
+        context.Response.Cookies.Delete(STATE_COOKIE_GITHUB);
+    }
 })
 .WithName("PostAuthGitHub");
 
@@ -218,6 +223,8 @@ app.MapGet("/postauth-entra", async (HttpContext context, IConnectionMultiplexer
     var state = context.Request.Query["state"].ToString().Split('_')[0];
     var gitHubUserId = context.Request.Query["state"].ToString().Split('_')[1];
     var cookieState = context.Request.Cookies[STATE_COOKIE_ENTRA];
+    // Delete cookie
+    context.Response.Cookies.Delete(STATE_COOKIE_ENTRA);
     app.Logger.LogDebug("State: {State}, Cookie State: {CookieState}", state, cookieState);
     if (string.IsNullOrWhiteSpace(state) || string.IsNullOrWhiteSpace(cookieState))
     {

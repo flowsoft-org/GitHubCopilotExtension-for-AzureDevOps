@@ -1,7 +1,4 @@
-using GitHub;
-using GitHub.Octokit.Client;
-using GitHub.Octokit.Client.Authentication;
-using Microsoft.Kiota.Serialization;
+using Octokit;
 using Org.BouncyCastle.Security;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -26,32 +23,17 @@ public class GitHubService
 
     private GitHubClient CreateGitHubClient()
     {
-        var tokenProvider = new TokenProvider(_githubToken);
-        var adapter = RequestAdapter.Create(new TokenAuthProvider(tokenProvider));
-        return new GitHubClient(adapter);
-    }
-
-    private async Task<GitHub.User.UserRequestBuilder.UserGetResponse?> GetCurrentUserAsync()
-    {
-        var client = CreateGitHubClient();
-        var userGetResponse = await client.User.GetAsync();
-        var currentUserJson = await userGetResponse!.PublicUser!.SerializeAsJsonStringAsync();
-        _logger.LogDebug("Current user: {CurrentUser}", currentUserJson);
-        return userGetResponse;
+        return new GitHubClient(new ProductHeaderValue("GHCPAzureDevOpsExtension"))
+        {
+            Credentials = new Credentials(_githubToken),
+        };
     }
 
     public async Task<long> GetUserIdAsync()
     {
         var client = CreateGitHubClient();
-        var userGetResponse = await client.User.GetAsync();
-        if (userGetResponse?.PublicUser == null)
-        {
-            return userGetResponse?.PrivateUser?.Id 
-                ?? throw new InvalidOperationException("Failed to retrieve user ID.");
-        } else {
-            return userGetResponse?.PublicUser?.Id 
-                ?? throw new InvalidOperationException("Failed to retrieve user ID.");
-        }
+        var currentUser = await client.User.Current();
+        return currentUser.Id;
     }
 
     public static async Task<bool> IsValidGitHubRequest(string payload, string keyID, string signature, ILogger logger, string githubToken = "")
