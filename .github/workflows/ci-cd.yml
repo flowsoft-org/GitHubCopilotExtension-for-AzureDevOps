@@ -54,12 +54,7 @@ jobs:
 
       - name: Provision and deploy to Azure
         run: |
-          azd config set defaults.ENTRAIDAPP_APPAUTHDOMAIN "" 
-          azd config set defaults.ENTRAIDAPP_CLIENTID ${{ vars.ENTRAIDAPP_CLIENTID }}
-          azd config set defaults.ENTRAIDAPP_TENANTID ${{ vars.ENTRAIDAPP_TENANTID }}
-          azd config set defaults.ENTRAIDAPP_INSTANCE ""
-          azd config set defaults.ENTRAIDAPP_CALLBACKPATH "" 
-          azd config set defaults.GITHUBAPP_CLIENTID ${{ vars.GITHUBAPP_CLIENTID }}
-          azd config set defaults.GITHUBAPP_INSTANCE "" 
-          azd config set defaults.GITHUBAPP_ISSUER ""
+          azd config set ENTRAIDAPP_CLIENTID ${{ vars.ENTRAIDAPP_CLIENTID }}
+          azd config set ENTRAIDAPP_TENANTID ${{ vars.ENTRAIDAPP_TENANTID }}
+          azd config set GITHUBAPP_CLIENTID ${{ vars.GITHUBAPP_CLIENTID }}
           azd up --no-prompt --environment ghceazdo
