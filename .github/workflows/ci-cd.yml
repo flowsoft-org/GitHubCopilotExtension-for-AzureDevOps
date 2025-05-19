@@ -54,7 +54,7 @@ jobs:
 
       - name: Provision and deploy to Azure
         run: |
-          azd config set ENTRAIDAPP_CLIENTID ${{ vars.ENTRAIDAPP_CLIENTID }}
-          azd config set ENTRAIDAPP_TENANTID ${{ vars.ENTRAIDAPP_TENANTID }}
-          azd config set GITHUBAPP_CLIENTID ${{ vars.GITHUBAPP_CLIENTID }}
+          ENTRAIDAPP_CLIENTID=${{ vars.ENTRAIDAPP_CLIENTID }} \
+          ENTRAIDAPP_TENANTID=${{ vars.ENTRAIDAPP_TENANTID }} \
+          GITHUBAPP_CLIENTID=${{ vars.GITHUBAPP_CLIENTID }} \
           azd up --no-prompt --environment ghceazdo
