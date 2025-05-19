@@ -31,8 +31,6 @@ Follow these steps to set up your environment for local development (including C
    dotnet user-secrets init
    dotnet user-secrets set "EntraIdApp:ClientSecret" "your-client-secret"
    dotnet user-secrets set "GitHubApp:ClientSecret" "your-github-client-secret"
-   # Set other secrets as needed
-   ```
 6. **Run the app locally:**
    ```bash
    dotnet run --project ./src/AppHost/
