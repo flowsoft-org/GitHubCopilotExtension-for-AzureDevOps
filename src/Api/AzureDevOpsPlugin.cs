@@ -12,7 +12,7 @@ public class AzureDevOpsPlugin
 
     public AzureDevOpsPlugin(string organizationUrl, string bearerToken, ILogger logger)
     {
-        _organizationUrl = organizationUrl ?? throw new ArgumentNullException(nameof(organizationUrl));
+        _organizationUrl = organizationUrl?.TrimEnd('/') ?? throw new ArgumentNullException(nameof(organizationUrl));
         _bearerToken = bearerToken ?? throw new ArgumentNullException(nameof(bearerToken));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -25,13 +25,14 @@ public class AzureDevOpsPlugin
     {
         try
         {
+            _logger.LogInformation("Getting open work items count from: {OrganizationUrl}", _organizationUrl);
             var client = new AzureDevOpsClient(_organizationUrl, _bearerToken);
             var count = await client.GetOpenWorkItemsCountAsync();
             return $"There are {count} open work items in the organization.";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting open work items count");
+            _logger.LogError(ex, "Error getting open work items count from {OrganizationUrl}", _organizationUrl);
             return $"Error getting open work items count: {ex.Message}";
         }
     }
@@ -45,6 +46,13 @@ public class AzureDevOpsPlugin
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return "Please provide a valid WIQL query to search for work items.";
+            }
+
+            _logger.LogInformation("Searching work items with query: {Query}", query);
+            
             // Connect to Azure DevOps using OAuth bearer token
             VssConnection connection = new VssConnection(
                 new Uri(_organizationUrl),
@@ -69,11 +77,20 @@ public class AzureDevOpsPlugin
             
             // Get the work item details
             var workItemIds = result.WorkItems.Select(wi => wi.Id).ToArray();
+            
+            // Limit the number of work items to fetch to avoid performance issues
+            const int maxWorkItems = 25;
+            if (workItemIds.Length > maxWorkItems)
+            {
+                _logger.LogWarning("Found {TotalCount} work items, limiting to {MaxWorkItems}", workItemIds.Length, maxWorkItems);
+                workItemIds = workItemIds.Take(maxWorkItems).ToArray();
+            }
+            
             var workItems = await witClient.GetWorkItemsAsync(workItemIds, expand: WorkItemExpand.Fields);
             
             // Format the results
             var formattedResults = new System.Text.StringBuilder();
-            formattedResults.AppendLine($"Found {workItems.Count} work items:");
+            formattedResults.AppendLine($"Found {result.WorkItems.Count()} work items" + (workItemIds.Length < result.WorkItems.Count() ? $" (showing first {maxWorkItems}):" : ":"));
             
             foreach (var workItem in workItems)
             {
@@ -98,6 +115,13 @@ public class AzureDevOpsPlugin
     {
         try
         {
+            if (workItemId <= 0)
+            {
+                return "Please provide a valid work item ID (a positive number).";
+            }
+            
+            _logger.LogInformation("Getting details for work item {WorkItemId}", workItemId);
+            
             // Connect to Azure DevOps using OAuth bearer token
             VssConnection connection = new VssConnection(
                 new Uri(_organizationUrl),
@@ -122,7 +146,13 @@ public class AzureDevOpsPlugin
             
             if (workItem.Fields.ContainsKey("System.Description"))
             {
-                formattedResult.AppendLine($"- Description: {workItem.Fields["System.Description"]}");
+                var description = workItem.Fields["System.Description"]?.ToString() ?? "";
+                // Trim description length if too long
+                if (description.Length > 500)
+                {
+                    description = description.Substring(0, 500) + "... (description truncated)";
+                }
+                formattedResult.AppendLine($"- Description: {description}");
             }
             
             if (workItem.Fields.ContainsKey("System.AssignedTo"))
@@ -139,7 +169,7 @@ public class AzureDevOpsPlugin
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting work item details");
+            _logger.LogError(ex, "Error getting work item details for work item {WorkItemId}", workItemId);
             return $"Error getting work item details: {ex.Message}";
         }
     }

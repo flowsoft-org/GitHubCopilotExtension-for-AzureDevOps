@@ -63,27 +63,48 @@ public class AgentService
             {
                 foreach (var message in messagesElement.EnumerateArray())
                 {
-                    var role = message.GetProperty("role").GetString();
-                    var content = message.GetProperty("content").GetString();
-                    
-                    if (role == "system")
+                    try
                     {
-                        messages.Add(new ChatMessageContent(AuthorRole.System, content));
+                        var role = message.GetProperty("role").GetString();
+                        var content = message.GetProperty("content").GetString();
+                        
+                        if (role == "system")
+                        {
+                            messages.Add(new ChatMessageContent(AuthorRole.System, content));
+                        }
+                        else if (role == "user")
+                        {
+                            messages.Add(new ChatMessageContent(AuthorRole.User, content));
+                        }
+                        else if (role == "assistant")
+                        {
+                            messages.Add(new ChatMessageContent(AuthorRole.Assistant, content));
+                        }
                     }
-                    else if (role == "user")
+                    catch (Exception ex)
                     {
-                        messages.Add(new ChatMessageContent(AuthorRole.User, content));
-                    }
-                    else if (role == "assistant")
-                    {
-                        messages.Add(new ChatMessageContent(AuthorRole.Assistant, content));
+                        _logger.LogWarning(ex, "Error processing message in request");
+                        // Continue processing other messages
                     }
                 }
             }
-            else
+            
+            if (messages.Count == 0)
             {
-                // If no messages found, handle as a direct user message
-                var userMessage = requestBody.RootElement.GetProperty("content").GetString();
+                // If no valid messages found, extract content directly or use a default
+                string userMessage = "Hello";
+                try
+                {
+                    if (requestBody.RootElement.TryGetProperty("content", out var contentElement))
+                    {
+                        userMessage = contentElement.GetString() ?? "Hello";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not extract content from request");
+                }
+                
                 return await ProcessChatMessageAsync(userMessage, githubToken, azureDevOpsToken, azureDevOpsOrganizationUrl);
             }
             
@@ -99,11 +120,19 @@ public class AgentService
                 chatHistory.AddMessage(message);
             }
             
-            // Get completion from the chat service
-            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
-            
-            // Format response for GitHub Copilot Extension
-            return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
+            try
+            {
+                // Get completion from the chat service
+                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
+                
+                // Format response for GitHub Copilot Extension
+                return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting chat completion");
+                return GitHubService.SimpleResponseMessage($"Sorry, I encountered an error: {ex.Message}");
+            }
         }
         catch (Exception ex)
         {
