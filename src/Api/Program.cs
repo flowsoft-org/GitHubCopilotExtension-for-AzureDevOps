@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,16 @@ builder.Services.AddHttpClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
+// Register Semantic Kernel and Agent services
+builder.Services.AddSingleton<Kernel>(sp =>
+{
+    var kernel = Kernel.CreateBuilder().Build();
+    return kernel;
+});
+
+// Add AgentService as a scoped service
+builder.Services.AddScoped<AgentService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -26,7 +38,7 @@ app.UseHttpsRedirection();
 app.UseDefaultMiddleware();
 
 // Add a new endpoint for GitHub Copilot Extension
-app.MapPost("/copilot", async (HttpContext context) =>
+app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =>
 {
     // Read the request body/payload
     using var reader = new StreamReader(context.Request.Body);
@@ -64,8 +76,31 @@ app.MapPost("/copilot", async (HttpContext context) =>
         return Results.Text(GitHubService.SimpleResponseMessage("Please provide a Azure DevOps Organization URL."), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
     } 
     else {
-        var azdoClient = new AzureDevOpsClient(answer, context.Request.Headers["x-azure-devops-token"]!);
-         return Results.Text(GitHubService.SimpleResponseMessage($"Welcome you have {await azdoClient.GetOpenWorkItemsCountAsync()} open Workitems!"), "application/json", System.Text.Encoding.UTF8, statusCode: 200);
+        // Create a GitHub Copilot chat completion service for the agent
+        var githubToken = context.Request.Headers["X-GitHub-Token"]!;
+        var azureDevOpsToken = context.Request.Headers["x-azure-devops-token"]!;
+        
+        // Create the chat completion service
+        var chatService = new GitHubCopilotChatCompletionService(githubToken, app.Logger);
+        
+        // Create the kernel and register plugins
+        var kernel = app.Services.GetRequiredService<Kernel>();
+        
+        // Register Azure DevOps plugin
+        var azureDevOpsPlugin = new AzureDevOpsPlugin(answer, azureDevOpsToken, app.Logger);
+        kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
+        
+        // Create and configure the agent service
+        var agent = new AgentService(kernel, chatService, app.Logger, app.Configuration);
+        
+        // Process the request with the agent
+        var jsonDocument = JsonSerializer.Deserialize<JsonDocument>(requestBody);
+        return Results.Text(
+            await agent.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken, azureDevOpsToken, answer),
+            "application/json", 
+            System.Text.Encoding.UTF8, 
+            statusCode: 200
+        );
     }
 })
 .WithName("PostCopilotMessage");
