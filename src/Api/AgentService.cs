@@ -5,12 +5,12 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 public class AgentService
 {
-    private readonly IKernel _kernel;
+    private readonly Kernel _kernel;
     private readonly IChatCompletionService _chatCompletionService;
     private readonly ILogger<AgentService> _logger;
     private readonly IConfiguration _configuration;
 
-    public AgentService(IKernel kernel, IChatCompletionService chatCompletionService, ILogger<AgentService> logger, IConfiguration configuration)
+    public AgentService(Kernel kernel, IChatCompletionService chatCompletionService, ILogger<AgentService> logger, IConfiguration configuration)
     {
         _kernel = kernel;
         _chatCompletionService = chatCompletionService;
@@ -117,7 +117,18 @@ public class AgentService
             // Add messages from request
             foreach (var message in messages)
             {
-                chatHistory.AddMessage(message);
+                if (message.Role == AuthorRole.System)
+                {
+                    chatHistory.AddSystemMessage(message.Content ?? string.Empty);
+                }
+                else if (message.Role == AuthorRole.User)
+                {
+                    chatHistory.AddUserMessage(message.Content ?? string.Empty);
+                }
+                else if (message.Role == AuthorRole.Assistant)
+                {
+                    chatHistory.AddAssistantMessage(message.Content ?? string.Empty);
+                }
             }
             
             try

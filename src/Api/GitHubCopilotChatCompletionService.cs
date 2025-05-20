@@ -2,11 +2,14 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 
 public class GitHubCopilotChatCompletionService : IChatCompletionService
 {
     private readonly string _githubToken;
     private readonly ILogger _logger;
+    
+    public IReadOnlyDictionary<string, object?> Attributes => new Dictionary<string, object?>();
 
     public GitHubCopilotChatCompletionService(string githubToken, ILogger logger)
     {
@@ -77,21 +80,41 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
     }
 
     /// <summary>
+    /// Get chat message content async overload that includes the Kernel parameter
+    /// </summary>
+    public async Task<IReadOnlyList<ChatMessageContent>> GetChatMessageContentsAsync(ChatHistory chatHistory, PromptExecutionSettings? executionSettings = null, Kernel? kernel = null, CancellationToken cancellationToken = default)
+    {
+        var content = await GetChatMessageContentAsync(chatHistory, executionSettings, cancellationToken);
+        return new List<ChatMessageContent> { content }.AsReadOnly();
+    }
+
+    /// <summary>
     /// Get streaming chat content from GitHub Copilot
     /// </summary>
-    public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(ChatHistory chatHistory, PromptExecutionSettings? executionSettings = null, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(ChatHistory chatHistory, PromptExecutionSettings? executionSettings = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        ChatMessageContent result;
+        
         try
         {
             // GitHub Copilot doesn't support streaming in our current implementation
-            var result = await GetChatMessageContentAsync(chatHistory, executionSettings, cancellationToken);
-            yield return new StreamingChatMessageContent(result.Role, result.Content);
+            result = await GetChatMessageContentAsync(chatHistory, executionSettings, cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in streaming chat content");
-            yield return new StreamingChatMessageContent(AuthorRole.Assistant, $"I encountered an error: {ex.Message}");
+            result = new ChatMessageContent(AuthorRole.Assistant, $"I encountered an error: {ex.Message}");
         }
+        
+        yield return new StreamingChatMessageContent(result.Role, result.Content);
+    }
+
+    /// <summary>
+    /// Get streaming chat content from GitHub Copilot overload that includes the Kernel parameter
+    /// </summary>
+    public IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(ChatHistory chatHistory, PromptExecutionSettings? executionSettings = null, Kernel? kernel = null, CancellationToken cancellationToken = default)
+    {
+        return GetStreamingChatMessageContentsAsync(chatHistory, executionSettings, cancellationToken);
     }
 
     /// <summary>
@@ -99,12 +122,10 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
     /// </summary>
     private string ConvertAuthorRoleToString(AuthorRole role)
     {
-        return role switch
-        {
-            AuthorRole.System => "system",
-            AuthorRole.User => "user",
-            AuthorRole.Assistant => "assistant",
-            _ => "user"
-        };
+        if (role == AuthorRole.System) return "system";
+        if (role == AuthorRole.User) return "user";
+        if (role == AuthorRole.Assistant) return "assistant";
+        if (role == AuthorRole.Tool) return "tool";
+        return "user"; // Default fallback
     }
 }

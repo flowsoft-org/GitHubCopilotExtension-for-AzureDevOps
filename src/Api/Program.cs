@@ -106,7 +106,9 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
                 
                 // Create and configure the agent service
-                var agent = new AgentService(kernel, chatService, app.Logger, app.Configuration);
+                var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+                var agentLogger = loggerFactory.CreateLogger<AgentService>();
+                var agent = new AgentService(kernel, chatService, agentLogger, app.Configuration);
                 
                 // Process the request with the agent
                 return Results.Text(
