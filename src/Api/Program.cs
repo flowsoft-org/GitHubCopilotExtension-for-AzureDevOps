@@ -23,6 +23,19 @@ builder.Services.AddSingleton<Kernel>(sp =>
     return kernel;
 });
 
+// Register IChatCompletionService as a factory that requires the GitHub token
+builder.Services.AddScoped<IChatCompletionService>(sp => 
+{
+    // This will be replaced with the actual token during request processing
+    // The service will be properly initialized in the request handler
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<GitHubCopilotChatCompletionService>();
+    return new GitHubCopilotChatCompletionService(
+        // Default empty token will be replaced during request
+        "", 
+        logger
+    );
+});
+
 // Add AgentService as a scoped service
 builder.Services.AddScoped<AgentService>();
 
@@ -91,12 +104,15 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
         } 
         else {
             try {
-                // Create a GitHub Copilot chat completion service for the agent
+                // Get the GitHub token and Azure DevOps token from headers
                 var githubToken = context.Request.Headers["X-GitHub-Token"]!;
                 var azureDevOpsToken = context.Request.Headers["x-azure-devops-token"]!;
                 
-                // Create the chat completion service
-                var chatService = new GitHubCopilotChatCompletionService(githubToken, app.Logger);
+                // Update the GitHub token in the chat completion service
+                if (app.Services.GetRequiredService<IChatCompletionService>() is GitHubCopilotChatCompletionService chatService)
+                {
+                    chatService.UpdateToken(githubToken);
+                }
                 
                 // Create the kernel and register plugins
                 var kernel = app.Services.GetRequiredService<Kernel>();
@@ -105,14 +121,12 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 var azureDevOpsPlugin = new AzureDevOpsPlugin(answer, azureDevOpsToken, app.Logger);
                 kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
                 
-                // Create and configure the agent service
-                var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-                var agentLogger = loggerFactory.CreateLogger<AgentService>();
-                var agent = new AgentService(kernel, chatService, agentLogger, app.Configuration);
+                // Get the agent service from DI
+                var agentService = app.Services.GetRequiredService<AgentService>();
                 
                 // Process the request with the agent
                 return Results.Text(
-                    await agent.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken, azureDevOpsToken, answer),
+                    await agentService.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken, azureDevOpsToken, answer),
                     "application/json", 
                     System.Text.Encoding.UTF8, 
                     statusCode: 200

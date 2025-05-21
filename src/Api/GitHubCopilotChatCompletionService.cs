@@ -6,15 +6,28 @@ using System.Runtime.CompilerServices;
 
 public class GitHubCopilotChatCompletionService : IChatCompletionService
 {
-    private readonly string _githubToken;
+    private string _githubToken;
     private readonly ILogger _logger;
     
     public IReadOnlyDictionary<string, object?> Attributes => new Dictionary<string, object?>();
 
     public GitHubCopilotChatCompletionService(string githubToken, ILogger logger)
     {
-        _githubToken = githubToken ?? throw new ArgumentNullException(nameof(githubToken));
+        _githubToken = githubToken ?? string.Empty;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Update the GitHub token used for API calls
+    /// </summary>
+    public void UpdateToken(string githubToken)
+    {
+        if (string.IsNullOrEmpty(githubToken))
+        {
+            throw new ArgumentNullException(nameof(githubToken));
+        }
+        _githubToken = githubToken;
+        _logger.LogDebug("GitHub token has been updated");
     }
 
     /// <summary>
