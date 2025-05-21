@@ -403,3 +403,4 @@ FodyWeavers.xsd
 
 # Exclude appsettings.Development.json
 src/AppHost/appsettings.Development.json
+src/AppHost/appsettings.*.json
