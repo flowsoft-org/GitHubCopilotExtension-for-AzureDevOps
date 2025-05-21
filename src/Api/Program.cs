@@ -120,10 +120,7 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 // Register Azure DevOps plugin
                 var azureDevOpsPlugin = new AzureDevOpsPlugin(answer, azureDevOpsToken, app.Logger);
                 kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
-                
-                // Get the agent service from DI
-                var agentService = app.Services.GetRequiredService<AgentService>();
-                
+                               
                 // Process the request with the agent
                 return Results.Text(
                     await agentService.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken, azureDevOpsToken, answer),
