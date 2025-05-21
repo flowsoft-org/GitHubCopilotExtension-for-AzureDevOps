@@ -302,7 +302,7 @@ app.MapPost("/token", async (HttpContext context, IConnectionMultiplexer connect
 
     // Extract the GitHub User ID from the request body
     var idToken = await Helpers.OAuth2.ParseAndValidateIdToken(idToken_string,
-                                                               builder.Configuration["GitHubApp:ClientId"],
+                                                               builder.Environment.IsDevelopment() ? builder.Configuration["GitHubApp:ClientId:Dev"] : builder.Configuration["GitHubApp:ClientId"],
                                                                builder.Configuration["GitHubApp:Issuer"]);
 
     var gitHubUserId = idToken.Subject;

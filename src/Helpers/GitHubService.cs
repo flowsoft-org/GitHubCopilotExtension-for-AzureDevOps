@@ -153,9 +153,12 @@ public class GitHubService
                 });
             }
         }
-        
+
         // Add a new message
-        messages.Add(content);
+        if (content != null)
+        {
+            messages.Add(content);
+        }
         
         // Create the request payload
         var requestPayload = new {
@@ -166,7 +169,6 @@ public class GitHubService
         
         // Serialize the payload to JSON
         string jsonPayload = JsonSerializer.Serialize(requestPayload);
-        
         request.Content = new StringContent(jsonPayload);
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         
