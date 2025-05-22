@@ -6,14 +6,10 @@ using System.ComponentModel;
 
 public class AzureDevOpsPlugin
 {
-    private readonly string _organizationUrl;
-    private readonly string _bearerToken;
     private readonly ILogger _logger;
 
-    public AzureDevOpsPlugin(string organizationUrl, string bearerToken, ILogger logger)
+    public AzureDevOpsPlugin(ILogger logger)
     {
-        _organizationUrl = organizationUrl?.TrimEnd('/') ?? throw new ArgumentNullException(nameof(organizationUrl));
-        _bearerToken = bearerToken ?? throw new ArgumentNullException(nameof(bearerToken));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -21,18 +17,21 @@ public class AzureDevOpsPlugin
     /// Get the count of open work items in the organization
     /// </summary>
     [KernelFunction, Description("Get the count of open work items in the Azure DevOps organization")]
-    public async Task<string> GetOpenWorkItemsCountAsync()
+    public async Task<string> GetOpenWorkItemsCountAsync(
+        [Description("The Azure DevOps organization URL")] string organizationUrl,
+        [Description("The OAuth bearer token for authentication")] string bearerToken
+    )
     {
         try
         {
-            _logger.LogInformation("Getting open work items count from: {OrganizationUrl}", _organizationUrl);
-            var client = new AzureDevOpsClient(_organizationUrl, _bearerToken);
+            _logger.LogInformation("Getting open work items count from: {OrganizationUrl}", organizationUrl);
+            var client = new AzureDevOpsClient(organizationUrl, bearerToken);
             var count = await client.GetOpenWorkItemsCountAsync();
             return $"There are {count} open work items in the organization.";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting open work items count from {OrganizationUrl}", _organizationUrl);
+            _logger.LogError(ex, "Error getting open work items count from {OrganizationUrl}", organizationUrl);
             return $"Error getting open work items count: {ex.Message}";
         }
     }
@@ -42,6 +41,8 @@ public class AzureDevOpsPlugin
     /// </summary>
     [KernelFunction, Description("Search for work items based on a query")]
     public async Task<string> SearchWorkItemsAsync(
+        [Description("The Azure DevOps organization URL")] string organizationUrl,
+        [Description("The OAuth bearer token for authentication")] string bearerToken,
         [Description("The WIQL query to search for work items")] string query)
     {
         try
@@ -55,8 +56,8 @@ public class AzureDevOpsPlugin
             
             // Connect to Azure DevOps using OAuth bearer token
             VssConnection connection = new VssConnection(
-                new Uri(_organizationUrl),
-                new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential(_bearerToken));
+                new Uri(organizationUrl),
+                new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential(bearerToken));
 
             // Create work item tracking client
             WorkItemTrackingHttpClient witClient = connection.GetClient<WorkItemTrackingHttpClient>();
@@ -111,6 +112,8 @@ public class AzureDevOpsPlugin
     /// </summary>
     [KernelFunction, Description("Get details of a specific work item by ID")]
     public async Task<string> GetWorkItemDetailsAsync(
+        [Description("The Azure DevOps organization URL")] string organizationUrl,
+        [Description("The OAuth bearer token for authentication")] string bearerToken,
         [Description("The ID of the work item to retrieve")] int workItemId)
     {
         try
@@ -124,8 +127,8 @@ public class AzureDevOpsPlugin
             
             // Connect to Azure DevOps using OAuth bearer token
             VssConnection connection = new VssConnection(
-                new Uri(_organizationUrl),
-                new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential(_bearerToken));
+                new Uri(organizationUrl),
+                new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential(bearerToken));
 
             // Create work item tracking client
             WorkItemTrackingHttpClient witClient = connection.GetClient<WorkItemTrackingHttpClient>();

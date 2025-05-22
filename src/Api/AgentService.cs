@@ -21,25 +21,31 @@ public class AgentService
     /// <summary>
     /// Process a chat message using the agent
     /// </summary>
-    public async Task<string> ProcessChatMessageAsync(string userMessage, string githubToken, string azureDevOpsToken, string azureDevOpsOrganizationUrl)
+    public async Task<string> ProcessChatMessageAsync(ChatHistory chatHistory, string githubToken, string azureDevOpsToken, string azureDevOpsOrganizationUrl)
     {
         try
         {
-            _logger.LogInformation("Processing chat message: {Message}", userMessage);
+            var arguments = new KernelArguments();
+            arguments["organizationUrl"] = azureDevOpsOrganizationUrl;
+            arguments["bearerToken"] = azureDevOpsToken;
 
-            // Create chat history
-            var chatHistory = new ChatHistory();
-            
-            // Add system message with instructions
+            var chat = _kernel.GetRequiredService<IChatCompletionService>();
             chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
-            
-            // Add user message
-            chatHistory.AddUserMessage(userMessage);
 
-            // Get completion from the chat service
-            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
-            
-            return result.Content ?? "I couldn't generate a response. Please try again.";
+            // You can optionally pass functions available for calling
+            var promptExecutionSettings = new PromptExecutionSettings
+            {
+                ModelId = "gpt-4o",
+                ExtensionData = new Dictionary<string, object>
+                {
+                    { "githubToken", githubToken },
+                    { "bearerToken", azureDevOpsToken },
+                    { "organizationUrl", azureDevOpsOrganizationUrl }
+                }
+            };
+            var response = await chat.GetChatMessageContentAsync(chatHistory, promptExecutionSettings);
+
+            return response.Content ?? "I couldn't generate a response. Please try again.";
         }
         catch (Exception ex)
         {
@@ -56,7 +62,7 @@ public class AgentService
         try
         {
             // Extract messages from the request
-            var messages = new List<ChatMessageContent>();
+            var chatHistory = new ChatHistory();
             
             if (requestBody.RootElement.TryGetProperty("messages", out var messagesElement) && 
                 messagesElement.ValueKind == JsonValueKind.Array)
@@ -70,15 +76,15 @@ public class AgentService
                         
                         if (role == "system")
                         {
-                            messages.Add(new ChatMessageContent(AuthorRole.System, content));
+                            chatHistory.Add(new ChatMessageContent(AuthorRole.System, content));
                         }
                         else if (role == "user")
                         {
-                            messages.Add(new ChatMessageContent(AuthorRole.User, content));
+                            chatHistory.Add(new ChatMessageContent(AuthorRole.User, content));
                         }
                         else if (role == "assistant")
                         {
-                            messages.Add(new ChatMessageContent(AuthorRole.Assistant, content));
+                            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, content));
                         }
                     }
                     catch (Exception ex)
@@ -88,67 +94,16 @@ public class AgentService
                     }
                 }
             }
-            
-            if (messages.Count == 0)
-            {
-                // If no valid messages found, extract content directly or use a default
-                string userMessage = "Hello";
-                try
-                {
-                    if (requestBody.RootElement.TryGetProperty("content", out var contentElement))
-                    {
-                        userMessage = contentElement.GetString() ?? "Hello";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not extract content from request");
-                }
-                
-                return await ProcessChatMessageAsync(userMessage, githubToken, azureDevOpsToken, azureDevOpsOrganizationUrl);
-            }
-            
-            // Create chat history
-            var chatHistory = new ChatHistory();
-            
-            // Add system message with instructions
-            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
-            
-            // Add messages from request
-            foreach (var message in messages)
-            {
-                if (message.Role == AuthorRole.System)
-                {
-                    chatHistory.AddSystemMessage(message.Content ?? string.Empty);
-                }
-                else if (message.Role == AuthorRole.User)
-                {
-                    chatHistory.AddUserMessage(message.Content ?? string.Empty);
-                }
-                else if (message.Role == AuthorRole.Assistant)
-                {
-                    chatHistory.AddAssistantMessage(message.Content ?? string.Empty);
-                }
-            }
-            
-            try
-            {
-                // Get completion from the chat service
-                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
-                
-                // Format response for GitHub Copilot Extension
-                return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting chat completion");
-                return GitHubService.SimpleResponseMessage($"Sorry, I encountered an error: {ex.Message}");
-            }
+
+
+            _logger.LogInformation("Processing chat message: {Message}", chatHistory.Last().Content);
+
+            return await ProcessChatMessageAsync(chatHistory, githubToken, azureDevOpsToken, azureDevOpsOrganizationUrl);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing GitHub Copilot request");
-            return GitHubService.SimpleResponseMessage($"Sorry, I encountered an error: {ex.Message}");
+            return $"Sorry, I encountered an error: {ex.Message}";
         }
     }
 
