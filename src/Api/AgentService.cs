@@ -2,6 +2,7 @@ using Microsoft.SemanticKernel;
 using System.Text.Json;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Agents;
 
 public class AgentService
 {
@@ -31,15 +32,39 @@ public class AgentService
             var chatHistory = new ChatHistory();
             
             // Add system message with instructions
-            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
+            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl, azureDevOpsToken));
             
             // Add user message
             chatHistory.AddUserMessage(userMessage);
 
-            // Get completion from the chat service
-            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
+            // Prepare PromptExecutionSettings with githubToken
+            var executionSettings = new PromptExecutionSettings();
+            if (!string.IsNullOrEmpty(githubToken))
+                executionSettings.ExtensionData = new Dictionary<string, object>
+                {
+                    { "githubToken", githubToken }
+                };
+
+            // Create agent from kernel
+            var agent = _kernel.CreateAgent();
             
-            return result.Content ?? "I couldn't generate a response. Please try again.";
+            // Create KernelArguments with the Azure DevOps tokens and URL
+            var arguments = new KernelArguments
+            {
+                ["organizationUrl"] = azureDevOpsOrganizationUrl,
+                ["bearerToken"] = azureDevOpsToken
+            };
+            
+            // Create new session with history and arguments
+            var session = agent.NewSession(
+                history: chatHistory,
+                arguments: arguments
+            );
+            
+            // Invoke the agent
+            var agentResponse = await session.InvokeAsync(userMessage, executionSettings);
+            
+            return agentResponse.Content ?? "I couldn't generate a response. Please try again.";
         }
         catch (Exception ex)
         {
@@ -112,7 +137,7 @@ public class AgentService
             var chatHistory = new ChatHistory();
             
             // Add system message with instructions
-            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
+            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl, azureDevOpsToken));
             
             // Add messages from request
             foreach (var message in messages)
@@ -133,11 +158,39 @@ public class AgentService
             
             try
             {
-                // Get completion from the chat service
-                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
+                // Prepare PromptExecutionSettings with githubToken
+                var executionSettings = new PromptExecutionSettings();
+                executionSettings.ExtensionData = new Dictionary<string, object>
+                {
+                    { "githubToken", githubToken }
+                };
+
+                // Create agent from kernel
+                var agent = _kernel.CreateAgent();
+                
+                // Create KernelArguments with the Azure DevOps tokens and URL
+                var arguments = new KernelArguments
+                {
+                    ["organizationUrl"] = azureDevOpsOrganizationUrl,
+                    ["bearerToken"] = azureDevOpsToken
+                };
+                
+                // Create new session with history and arguments
+                var session = agent.NewSession(
+                    history: chatHistory,
+                    arguments: arguments
+                );
+                
+                // Get the last user message from history
+                string? lastUserMessage = chatHistory
+                    .Where(m => m.Role == AuthorRole.User)
+                    .LastOrDefault()?.Content ?? "Help me with Azure DevOps";
+                
+                // Invoke the agent
+                var agentResponse = await session.InvokeAsync(lastUserMessage, executionSettings);
                 
                 // Format response for GitHub Copilot Extension
-                return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
+                return GitHubService.SimpleResponseMessage(agentResponse.Content ?? "I couldn't generate a response. Please try again.");
             }
             catch (Exception ex)
             {
@@ -155,10 +208,10 @@ public class AgentService
     /// <summary>
     /// Get the system prompt with instructions for the agent
     /// </summary>
-    private string GetSystemPrompt(string azureDevOpsOrganizationUrl)
+    private string GetSystemPrompt(string azureDevOpsOrganizationUrl, string azureDevOpsToken)
     {
         return $@"You are an AI assistant that helps users with Azure DevOps. 
-You have access to the Azure DevOps organization at {azureDevOpsOrganizationUrl}.
+You have access to the Azure DevOps organization at {azureDevOpsOrganizationUrl}. ****** is {azureDevOpsToken}
 Your goal is to provide helpful, accurate information about work items, repositories, builds, releases, and other Azure DevOps resources.
 
 Here are some examples of tasks you can help with:
