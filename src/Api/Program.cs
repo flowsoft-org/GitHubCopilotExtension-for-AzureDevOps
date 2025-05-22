@@ -26,14 +26,8 @@ builder.Services.AddSingleton<Kernel>(sp =>
 // Register IChatCompletionService as a factory that requires the GitHub token
 builder.Services.AddScoped<IChatCompletionService>(sp => 
 {
-    // This will be replaced with the actual token during request processing
-    // The service will be properly initialized in the request handler
     var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<GitHubCopilotChatCompletionService>();
-    return new GitHubCopilotChatCompletionService(
-        // Default empty token will be replaced during request
-        "", 
-        logger
-    );
+    return new GitHubCopilotChatCompletionService(logger);
 });
 
 // Add AgentService as a scoped service
@@ -108,12 +102,6 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 // Get the GitHub token and Azure DevOps token from headers
                 var githubToken = context.Request.Headers["X-GitHub-Token"]!;
                 var azureDevOpsToken = context.Request.Headers["x-azure-devops-token"]!;
-                
-                // Update the GitHub token in the chat completion service
-                if (app.Services.GetRequiredService<IChatCompletionService>() is GitHubCopilotChatCompletionService chatService)
-                {
-                    chatService.UpdateToken(githubToken);
-                }
                 
                 // Create the kernel and register plugins
                 var kernel = app.Services.GetRequiredService<Kernel>();

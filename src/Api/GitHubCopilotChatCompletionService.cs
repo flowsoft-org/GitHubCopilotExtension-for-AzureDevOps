@@ -3,31 +3,17 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using System.Text.Json;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Azure;
 
 public class GitHubCopilotChatCompletionService : IChatCompletionService
 {
-    private string _githubToken;
     private readonly ILogger _logger;
     
     public IReadOnlyDictionary<string, object?> Attributes => new Dictionary<string, object?>();
 
-    public GitHubCopilotChatCompletionService(string githubToken, ILogger logger)
+    public GitHubCopilotChatCompletionService(ILogger logger)
     {
-        _githubToken = githubToken ?? string.Empty;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    /// <summary>
-    /// Update the GitHub token used for API calls
-    /// </summary>
-    public void UpdateToken(string githubToken)
-    {
-        if (string.IsNullOrEmpty(githubToken))
-        {
-            throw new ArgumentNullException(nameof(githubToken));
-        }
-        _githubToken = githubToken;
-        _logger.LogDebug("GitHub token has been updated");
     }
 
     /// <summary>
@@ -43,6 +29,14 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
             {
                 _logger.LogWarning("Chat history is empty");
                 return new ChatMessageContent(AuthorRole.Assistant, "I don't have any context to work with. Could you please provide more information?");
+            }
+
+            // Get the github token from executionSettings.ExtensionData
+            string githubToken = executionSettings?.ExtensionData != null && executionSettings.ExtensionData.TryGetValue("githubToken", out var tokenObj) && tokenObj is string tokenStr ? tokenStr : string.Empty;
+            if (string.IsNullOrEmpty(githubToken))
+            {
+                _logger.LogError("GitHub token is missing in PromptExecutionSettings.ExtensionData");
+                return new ChatMessageContent(AuthorRole.Assistant, "GitHub token is missing. Please authenticate.");
             }
 
             // Convert chat history to the format expected by GitHub Copilot
@@ -65,7 +59,9 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
 
             // Call GitHub Copilot
             _logger.LogDebug("Sending request to GitHub Copilot API");
-            var response = await GitHubService.GHCopilotChatCompletion(_githubToken, jsonDocument, null);
+            _logger.LogDebug($"Prompt: {messages}");
+            _logger.LogDebug($"JsonDocument: {jsonDocument}");
+            var response = await GitHubService.GHCopilotChatCompletion(githubToken, jsonDocument, null);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -76,7 +72,7 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
             // Process the response
             _logger.LogDebug("Processing GitHub Copilot API response");
             var (role, content) = await GitHubService.ExtractLastMessageFromCompletionResponse(response);
-
+            _logger.LogDebug($"Role: {role} Content: {content}");
             if (string.IsNullOrEmpty(content))
             {
                 _logger.LogWarning("Empty content received from GitHub Copilot");
@@ -110,7 +106,6 @@ public class GitHubCopilotChatCompletionService : IChatCompletionService
         
         try
         {
-            // GitHub Copilot doesn't support streaming in our current implementation
             result = await GetChatMessageContentAsync(chatHistory, executionSettings, cancellationToken);
         }
         catch (Exception ex)
