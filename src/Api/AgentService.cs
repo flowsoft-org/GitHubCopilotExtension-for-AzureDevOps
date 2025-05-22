@@ -2,7 +2,6 @@ using Microsoft.SemanticKernel;
 using System.Text.Json;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Agents;
 
 public class AgentService
 {
@@ -45,26 +44,10 @@ public class AgentService
                     { "githubToken", githubToken }
                 };
 
-            // Create agent from kernel
-            var agent = _kernel.CreateAgent();
+            // Get completion from the chat service with execution settings that include githubToken
+            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory, executionSettings);
             
-            // Create KernelArguments with the Azure DevOps tokens and URL
-            var arguments = new KernelArguments
-            {
-                ["organizationUrl"] = azureDevOpsOrganizationUrl,
-                ["bearerToken"] = azureDevOpsToken
-            };
-            
-            // Create new session with history and arguments
-            var session = agent.NewSession(
-                history: chatHistory,
-                arguments: arguments
-            );
-            
-            // Invoke the agent
-            var agentResponse = await session.InvokeAsync(userMessage, executionSettings);
-            
-            return agentResponse.Content ?? "I couldn't generate a response. Please try again.";
+            return result.Content ?? "I couldn't generate a response. Please try again.";
         }
         catch (Exception ex)
         {
@@ -165,32 +148,11 @@ public class AgentService
                     { "githubToken", githubToken }
                 };
 
-                // Create agent from kernel
-                var agent = _kernel.CreateAgent();
-                
-                // Create KernelArguments with the Azure DevOps tokens and URL
-                var arguments = new KernelArguments
-                {
-                    ["organizationUrl"] = azureDevOpsOrganizationUrl,
-                    ["bearerToken"] = azureDevOpsToken
-                };
-                
-                // Create new session with history and arguments
-                var session = agent.NewSession(
-                    history: chatHistory,
-                    arguments: arguments
-                );
-                
-                // Get the last user message from history
-                string? lastUserMessage = chatHistory
-                    .Where(m => m.Role == AuthorRole.User)
-                    .LastOrDefault()?.Content ?? "Help me with Azure DevOps";
-                
-                // Invoke the agent
-                var agentResponse = await session.InvokeAsync(lastUserMessage, executionSettings);
+                // Get completion from the chat service with execution settings that include githubToken
+                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory, executionSettings);
                 
                 // Format response for GitHub Copilot Extension
-                return GitHubService.SimpleResponseMessage(agentResponse.Content ?? "I couldn't generate a response. Please try again.");
+                return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
             }
             catch (Exception ex)
             {
