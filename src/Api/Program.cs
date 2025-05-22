@@ -19,7 +19,10 @@ builder.Logging.AddConsole();
 // Register Semantic Kernel and Agent services
 builder.Services.AddSingleton<Kernel>(sp =>
 {
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<AzureDevOpsPlugin>();
     var kernel = Kernel.CreateBuilder().Build();
+    var azureDevOpsPlugin = new AzureDevOpsPlugin(logger);
+    kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
     return kernel;
 });
 
@@ -106,9 +109,7 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 // Create the kernel and register plugins
                 var kernel = app.Services.GetRequiredService<Kernel>();
                 
-                // Register Azure DevOps plugin
-                var azureDevOpsPlugin = new AzureDevOpsPlugin(answer, azureDevOpsToken, app.Logger);
-                kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
+                // AzureDevOpsPlugin is already registered in the Kernel build
                                
                 // Process the request with the agent
                 return Results.Text(
