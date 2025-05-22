@@ -31,13 +31,21 @@ public class AgentService
             var chatHistory = new ChatHistory();
             
             // Add system message with instructions
-            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
+            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl, azureDevOpsToken));
             
             // Add user message
             chatHistory.AddUserMessage(userMessage);
 
-            // Get completion from the chat service
-            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
+            // Prepare PromptExecutionSettings with githubToken
+            var executionSettings = new PromptExecutionSettings();
+            if (!string.IsNullOrEmpty(githubToken))
+                executionSettings.ExtensionData = new Dictionary<string, object>
+                {
+                    { "githubToken", githubToken }
+                };
+
+            // Get completion from the chat service with execution settings that include githubToken
+            var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory, executionSettings);
             
             return result.Content ?? "I couldn't generate a response. Please try again.";
         }
@@ -112,7 +120,7 @@ public class AgentService
             var chatHistory = new ChatHistory();
             
             // Add system message with instructions
-            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl));
+            chatHistory.AddSystemMessage(GetSystemPrompt(azureDevOpsOrganizationUrl, azureDevOpsToken));
             
             // Add messages from request
             foreach (var message in messages)
@@ -133,8 +141,15 @@ public class AgentService
             
             try
             {
-                // Get completion from the chat service
-                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory);
+                // Prepare PromptExecutionSettings with githubToken
+                var executionSettings = new PromptExecutionSettings();
+                executionSettings.ExtensionData = new Dictionary<string, object>
+                {
+                    { "githubToken", githubToken }
+                };
+
+                // Get completion from the chat service with execution settings that include githubToken
+                var result = await _chatCompletionService.GetChatMessageContentAsync(chatHistory, executionSettings);
                 
                 // Format response for GitHub Copilot Extension
                 return GitHubService.SimpleResponseMessage(result.Content ?? "I couldn't generate a response. Please try again.");
@@ -155,10 +170,10 @@ public class AgentService
     /// <summary>
     /// Get the system prompt with instructions for the agent
     /// </summary>
-    private string GetSystemPrompt(string azureDevOpsOrganizationUrl)
+    private string GetSystemPrompt(string azureDevOpsOrganizationUrl, string azureDevOpsToken)
     {
         return $@"You are an AI assistant that helps users with Azure DevOps. 
-You have access to the Azure DevOps organization at {azureDevOpsOrganizationUrl}.
+You have access to the Azure DevOps organization at {azureDevOpsOrganizationUrl}. ****** is {azureDevOpsToken}
 Your goal is to provide helpful, accurate information about work items, repositories, builds, releases, and other Azure DevOps resources.
 
 Here are some examples of tasks you can help with:
