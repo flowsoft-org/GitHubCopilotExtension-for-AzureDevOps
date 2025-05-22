@@ -16,21 +16,24 @@ builder.Services.AddHttpClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// Register Semantic Kernel and Agent services
-builder.Services.AddSingleton<Kernel>(sp =>
-{
-    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<AzureDevOpsPlugin>();
-    var kernel = Kernel.CreateBuilder().Build();
-    var azureDevOpsPlugin = new AzureDevOpsPlugin(logger);
-    kernel.Plugins.AddFromObject(azureDevOpsPlugin, "AzureDevOps");
-    return kernel;
-});
-
-// Register IChatCompletionService as a factory that requires the GitHub token
-builder.Services.AddScoped<IChatCompletionService>(sp => 
+// Register IChatCompletionService so it can be injected into AgentService
+builder.Services.AddScoped<IChatCompletionService>(sp =>
 {
     var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<GitHubCopilotChatCompletionService>();
     return new GitHubCopilotChatCompletionService(logger);
+});
+
+// Register Semantic Kernel and Agent services
+builder.Services.AddScoped<Kernel>(sp =>
+{
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger<AzureDevOpsPlugin>();
+    var chatService = sp.GetRequiredService<IChatCompletionService>();
+
+    var builder = Kernel.CreateBuilder();
+    builder.Services.AddSingleton<IChatCompletionService>(chatService);
+    var kernel = builder.Build();
+    kernel.Plugins.AddFromObject(new AzureDevOpsPlugin(logger), "AzureDevOpsPlugin");
+    return kernel;
 });
 
 // Add AgentService as a scoped service
@@ -112,7 +115,9 @@ app.MapPost("/copilot", async (HttpContext context, AgentService agentService) =
                 var azureDevOpsToken = context.Request.Headers["x-azure-devops-token"].FirstOrDefault();
 
                 return Results.Text(
-                    await agentService.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken ?? string.Empty, azureDevOpsToken ?? string.Empty, answer),
+                    GitHubService.SimpleResponseMessage(
+                        await agentService.ProcessGitHubCopilotRequestAsync(jsonDocument!, githubToken ?? string.Empty, azureDevOpsToken ?? string.Empty, answer)
+                        ),
                     "application/json", 
                     System.Text.Encoding.UTF8, 
                     statusCode: 200

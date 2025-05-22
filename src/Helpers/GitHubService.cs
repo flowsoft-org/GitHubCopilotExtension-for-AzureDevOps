@@ -178,7 +178,18 @@ public class GitHubService
     }
 
     public static string SimpleResponseMessage(string message) {
-        return "data: {\"choices\":[{\"finish_reason\":\"stop\",\"delta\":{\"role\":\"assistant\",\"content\":\"" + message + "\"}}]}\n\ndata: [DONE]";
+        var payload = new {
+            choices = new[] {
+                new {
+                    finish_reason = "stop",
+                    delta = new {
+                        role = "assistant",
+                        content = message
+                    }
+                }
+            }
+        };
+        return "data: " + JsonSerializer.Serialize(payload) + "\n\ndata: [DONE]";
     }
 
     public static async Task<(string role, string content)> ExtractLastMessageFromCompletionResponse(HttpResponseMessage response)
